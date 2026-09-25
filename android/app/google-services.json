@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "569357539406",
+    "project_id": "uni-check",
+    "storage_bucket": "uni-check.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:569357539406:android:6eb295fa36aec097944b1f",
+        "android_client_info": {
+          "package_name": "com.example.uni_check_neww"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-QqrtEuQ3GK9nOf-VtyLa1XqJY-iKaT0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
