@@ -56,7 +56,6 @@ class DefaultFirebaseOptions {
     projectId: 'uni-check',
     storageBucket: 'uni-check.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDzrBKSkAo-IGMIFiRTH_fslc4ZD4i5AJU',
     appId: '1:569357539406:ios:598c8ca8bd6d426c944b1f',
