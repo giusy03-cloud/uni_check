@@ -36,7 +36,7 @@ class StudentMyCoursesPage extends StatelessWidget {
           if (corsi.isEmpty) {
             return const Center(
               child: Text(
-                "Non sei iscritta a nessun corso.",
+                "Non sei iscritto/a a nessun corso.",
                 style: TextStyle(color: Colors.white, fontSize: 18),
               ),
             );
@@ -114,11 +114,34 @@ class StudentMyCoursesPage extends StatelessWidget {
                             ),
                           ),
                           onPressed: () async {
+                            // ⭐ 1. Rimuovi lo studente dal corso
                             await FirebaseFirestore.instance
                                 .collection("corsi")
                                 .doc(corsoDoc.id)
                                 .update({
                               "studenti": FieldValue.arrayRemove([user.uid])
+                            });
+
+                            // ⭐ 2. Rimuovi lo studente dalla tabella presenze
+                            await FirebaseFirestore.instance
+                                .collection("registro_presenze")
+                                .doc(corsoDoc.id)
+                                .update({
+                              "studenti": FieldValue.arrayRemove([
+                                {
+                                  "uid": user.uid,
+                                  "nome": corso["nomeStudente"] ?? "",
+                                  "cognome": corso["cognomeStudente"] ?? "",
+                                }
+                              ])
+                            });
+
+                            // ⭐ 3. Rimuovi tutte le sue presenze (celle)
+                            await FirebaseFirestore.instance
+                                .collection("registro_presenze")
+                                .doc(corsoDoc.id)
+                                .update({
+                              "presenze.${user.uid}": FieldValue.delete(),
                             });
 
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -127,6 +150,7 @@ class StudentMyCoursesPage extends StatelessWidget {
                               ),
                             );
                           },
+
                         ),
                       ],
                     ),

@@ -8,8 +8,6 @@ import 'package:uni_check_neww/screens/login_screen.dart';
 import '../auth.dart';
 import 'dart:convert';
 
-
-
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -18,6 +16,8 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final nomeController = TextEditingController();
+  final cognomeController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
@@ -46,7 +46,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final bytes = profileImage!.readAsBytesSync();
     return base64Encode(bytes);
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +96,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 20),
 
+                    // ⭐ NUOVI CAMPI
+                    _buildTextField(nomeController, "Nome", Icons.person),
+                    const SizedBox(height: 15),
+
+                    _buildTextField(cognomeController, "Cognome", Icons.person_outline),
+                    const SizedBox(height: 15),
+
                     _buildTextField(emailController, "Email", Icons.email),
                     const SizedBox(height: 15),
 
@@ -135,7 +141,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 20),
 
-                    //RUOLO
                     DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: selectedRole,
@@ -168,17 +173,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 40),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 14, horizontal: 40),
                       ),
                       onPressed: isLoading
                           ? null
                           : () async {
                         setState(() => isLoading = true);
 
+                        final nome = nomeController.text.trim();
+                        final cognome = cognomeController.text.trim();
                         final email = emailController.text.trim();
                         final password = passwordController.text.trim();
 
-                        if (email.isEmpty || password.isEmpty) {
+                        if (nome.isEmpty ||
+                            cognome.isEmpty ||
+                            email.isEmpty ||
+                            password.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text("Compila tutti i campi."),
@@ -190,7 +201,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         }
 
                         try {
-                          final user = await auth.createUserWithEmailAndPassword(
+                          final user =
+                          await auth.createUserWithEmailAndPassword(
                             email: email,
                             password: password,
                           );
@@ -203,11 +215,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           final base64Image = convertImageToBase64();
 
                           final data = {
+                            "nome": nome,
+                            "cognome": cognome,
                             "email": email,
                             "ruolo": selectedRole == "studente"
                                 ? "studente"
                                 : "pending_docente",
-                            "approved": selectedRole == "studente" ? true : false,
+                            "approved": selectedRole == "studente"
+                                ? true
+                                : false,
                           };
 
                           if (base64Image != null) {
@@ -223,7 +239,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                            MaterialPageRoute(
+                                builder: (_) => const LoginScreen()),
                           );
                         } catch (e) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -261,7 +278,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ],
                       ),
                     )
-
                   ],
                 ),
               ),
@@ -272,7 +288,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon,
+  Widget _buildTextField(TextEditingController controller, String label,
+      IconData icon,
       {bool obscure = false}) {
     return TextField(
       controller: controller,

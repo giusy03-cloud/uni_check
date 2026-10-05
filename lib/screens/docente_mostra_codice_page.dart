@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class DocenteMostraQRPage extends StatelessWidget {
+class DocenteMostraCodicePage extends StatelessWidget {
   final String lezioneId;
 
-  const DocenteMostraQRPage({super.key, required this.lezioneId});
+  const DocenteMostraCodicePage({super.key, required this.lezioneId});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
-        title: const Text("QR Lezione"),
+        title: const Text("Codice Lezione"),
         backgroundColor: Colors.indigoAccent,
         centerTitle: true,
       ),
@@ -36,15 +35,19 @@ class DocenteMostraQRPage extends StatelessWidget {
             );
           }
 
-          final token = lezione["qrToken"];
-          final scadenza = lezione["qrScadenza"] != null
-              ? (lezione["qrScadenza"] as Timestamp).toDate()
+          final codice = lezione["codice"];
+
+          final scadenza = lezione["codiceScadenza"] != null
+              ? (lezione["codiceScadenza"] as Timestamp).toDate()
               : null;
 
-          if (token == null || scadenza == null) {
+          final now = DateTime.now();
+          final codiceScaduto = scadenza == null || scadenza.isBefore(now);
+
+          if (codice == null) {
             return const Center(
               child: Text(
-                "QR non generato",
+                "Codice non generato",
                 style: TextStyle(color: Colors.white, fontSize: 18),
               ),
             );
@@ -54,25 +57,23 @@ class DocenteMostraQRPage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // ⭐ QR vero
-                QrImageView(
-                  data: token,
-                  size: 250,
-                  backgroundColor: Colors.white,
+                Text(
+                  codice,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 60,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
 
                 const SizedBox(height: 20),
 
                 Text(
-                  "Token: $token",
-                  style: const TextStyle(color: Colors.white),
-                ),
-
-                const SizedBox(height: 10),
-
-                Text(
-                  "Scade alle: ${scadenza.hour}:${scadenza.minute.toString().padLeft(2, '0')}",
-                  style: const TextStyle(color: Colors.white70),
+                  codiceScaduto ? "Codice scaduto" : "Codice attivo",
+                  style: TextStyle(
+                    color: codiceScaduto ? Colors.redAccent : Colors.greenAccent,
+                    fontSize: 22,
+                  ),
                 ),
               ],
             ),

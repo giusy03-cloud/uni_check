@@ -1,8 +1,15 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'docente_mostra_qr_page.dart';
+import 'docente_mostra_codice_page.dart';
+
+String generaCodice() {
+  const lettere = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  final rand = Random();
+  return List.generate(4, (_) => lettere[rand.nextInt(lettere.length)]).join();
+}
 
 class LezioniCorsoPage extends StatefulWidget {
   final String corsoId;
@@ -25,7 +32,7 @@ class _LezioniCorsoPageState extends State<LezioniCorsoPage> {
   void initState() {
     super.initState();
 
-    // Aggiorna la pagina ogni secondo
+    // Aggiorna la pagina ogni secondo per il countdown
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -84,19 +91,33 @@ class _LezioniCorsoPageState extends State<LezioniCorsoPage> {
               final oraInizio = lezione["oraInizio"];
               final oraFine = lezione["oraFine"];
 
-              final qrAttivo = lezione["qrAttivo"] ?? false;
-              final qrScadenza = lezione["qrScadenza"] != null
-                  ? (lezione["qrScadenza"] as Timestamp).toDate()
+              final codice = lezione["codice"];
+
+              final scadenza = lezione["codiceScadenza"] != null
+                  ? (lezione["codiceScadenza"] as Timestamp).toDate()
                   : null;
 
               final now = DateTime.now();
-              final qrScaduto = qrScadenza != null && qrScadenza.isBefore(now);
 
-              // Calcolo countdown
+              // ⭐ Lezione passata (solo se data < oggi)
+              final oggi = DateTime(now.year, now.month, now.day);
+              final lezionePassata = data.isBefore(oggi);
+
+              // ⭐ Codice scaduto
+              final codiceScaduto = scadenza != null && scadenza.isBefore(now);
+
+              // ⭐ Nascondi lezioni passate o con codice scaduto
+              if (lezionePassata || codiceScaduto) {
+                return const SizedBox.shrink();
+              }
+
+              // Countdown
               String countdown = "";
-              if (qrAttivo && !qrScaduto && qrScadenza != null) {
-                final diff = qrScadenza.difference(now);
-                countdown = "${diff.inSeconds}s";
+              if (codice != null && scadenza != null) {
+                final diff = scadenza.difference(now);
+                if (diff.inSeconds > 0) {
+                  countdown = "${diff.inSeconds}s";
+                }
               }
 
               return Container(
@@ -126,69 +147,51 @@ class _LezioniCorsoPageState extends State<LezioniCorsoPage> {
 
                       const SizedBox(height: 12),
 
-                      // QR NON ATTIVO
-                      if (!qrAttivo) ...[
+                      // ⭐ Nessun codice generato → bottone genera codice
+                      if (codice == null) ...[
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.greenAccent.shade700,
                           ),
-                          child: const Text("Genera QR", style: TextStyle(color: Colors.white)),
+                          child: const Text("Genera Codice", style: TextStyle(color: Colors.white)),
                           onPressed: () async {
-                            final token = DateTime.now().millisecondsSinceEpoch.toString();
+                            final nuovoCodice = generaCodice();
 
                             await FirebaseFirestore.instance
                                 .collection("lezioni")
                                 .doc(lezioneId)
                                 .update({
-                              "qrToken": token,
-                              "qrScadenza": Timestamp.fromDate(
+                              "codice": nuovoCodice,
+                              "codiceScadenza": Timestamp.fromDate(
                                 DateTime.now().add(const Duration(minutes: 2)),
                               ),
-                              "qrAttivo": true,
                             });
 
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("QR generato!")),
+                              SnackBar(content: Text("Codice generato: $nuovoCodice")),
                             );
                           },
                         ),
                       ],
 
-                      // QR SCADUTO
-                      if (qrAttivo && qrScaduto) ...[
+                      // ⭐ Codice attivo
+                      if (codice != null && !codiceScaduto) ...[
                         Text(
-                          "QR scaduto",
-                          style: const TextStyle(color: Colors.redAccent, fontSize: 16),
+                          "Codice attivo: $codice ${countdown.isNotEmpty ? "($countdown)" : ""}",
+                          style: const TextStyle(color: Colors.greenAccent, fontSize: 18),
                         ),
-                      ],
-
-                      // QR ATTIVO
-                      if (qrAttivo && !qrScaduto && qrScadenza != null) ...[
-                        Text(
-                          "QR attivo ($countdown)",
-                          style: TextStyle(
-                            color: Colors.greenAccent.shade200,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "Scade alle: ${qrScadenza.hour}:${qrScadenza.minute.toString().padLeft(2, '0')}",
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-
                         const SizedBox(height: 12),
 
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.indigoAccent,
                           ),
-                          child: const Text("Mostra QR", style: TextStyle(color: Colors.white)),
+                          child: const Text("Mostra Codice", style: TextStyle(color: Colors.white)),
                           onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => DocenteMostraQRPage(lezioneId: lezioneId),
+                                builder: (_) => DocenteMostraCodicePage(lezioneId: lezioneId),
                               ),
                             );
                           },

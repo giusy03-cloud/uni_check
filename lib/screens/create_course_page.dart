@@ -18,10 +18,13 @@ class _CreateCoursePageState extends State<CreateCoursePage> {
 
   String annoAccademico = "2026/2027";
 
-  bool teoria = false;
-  bool laboratorio = false;
-
   bool isLoading = false;
+
+  // ⭐ Lista dei docenti selezionati (solo UID)
+  List<String> docentiSelezionati = [];
+
+  // ⭐ Lista completa dei docenti (per mostrare nome/cognome)
+  List<QueryDocumentSnapshot> listaDocenti = [];
 
   Future<void> createCourse() async {
     final auth = Auth();
@@ -43,19 +46,32 @@ class _CreateCoursePageState extends State<CreateCoursePage> {
 
     setState(() => isLoading = true);
 
-    await FirebaseFirestore.instance.collection("corsi").add({
+    // ⭐ CREA IL CORSO
+    final corsoRef = await FirebaseFirestore.instance.collection("corsi").add({
       "nome": nome,
       "annoAccademico": annoAccademico,
       "annoCorso": annoCorso,
       "cfu": cfu,
       "numeroLezioniTotali": numeroLezioniTotali,
 
-      // ⭐ CAMPI FONDAMENTALI
       "docenteUid": user.uid,
       "docenteEmail": user.email,
 
+      // ⭐ SOLO UID → FUNZIONA CON LE REGOLE FIRESTORE
+      "docentiCondivisi": docentiSelezionati,
+
       "studenti": [],
       "createdAt": DateTime.now(),
+    });
+
+    // ⭐ CREA LA TABELLA PRESENZE DEL CORSO
+    await FirebaseFirestore.instance
+        .collection("registro_presenze")
+        .doc(corsoRef.id)
+        .set({
+      "studenti": [],
+      "lezioni": [],
+      "presenze": {},
     });
 
     setState(() => isLoading = false);
@@ -67,6 +83,52 @@ class _CreateCoursePageState extends State<CreateCoursePage> {
     Navigator.pop(context);
   }
 
+  // ⭐ Popup per selezionare docenti
+  void _apriPopupAggiungiDocente(BuildContext context) async {
+    final docentiSnapshot = await FirebaseFirestore.instance
+        .collection("utenti")
+        .where("ruolo", isEqualTo: "docente")
+        .get();
+
+    listaDocenti = docentiSnapshot.docs;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A2E),
+          title: const Text("Seleziona docente", style: TextStyle(color: Colors.white)),
+          content: SizedBox(
+            width: 300,
+            height: 300,
+            child: ListView.builder(
+              itemCount: listaDocenti.length,
+              itemBuilder: (context, index) {
+                final d = listaDocenti[index].data() as Map<String, dynamic>;
+                final uid = listaDocenti[index].id;
+
+                return ListTile(
+                  title: Text("${d["nome"]} ${d["cognome"]}", style: const TextStyle(color: Colors.white)),
+                  subtitle: Text(d["email"], style: const TextStyle(color: Colors.white70)),
+                  onTap: () {
+                    setState(() {
+                      docentiSelezionati.add(uid);   // ⭐ SOLO UID
+                    });
+
+                    Navigator.pop(context);
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Aggiunto: ${d["nome"]} ${d["cognome"]}")),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,6 +186,40 @@ class _CreateCoursePageState extends State<CreateCoursePage> {
 
                     _buildInput("Numero lezioni totali nel trimestre", _numeroLezioniController),
                     const SizedBox(height: 20),
+
+                    // ⭐ Bottone aggiungi docente
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orangeAccent,
+                      ),
+                      child: const Text("Aggiungi docente/esercitatore", style: TextStyle(color: Colors.white)),
+                      onPressed: () {
+                        _apriPopupAggiungiDocente(context);
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ⭐ Mostra docenti selezionati
+                    if (docentiSelezionati.isNotEmpty)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Docenti aggiunti:", style: TextStyle(color: Colors.white)),
+                          const SizedBox(height: 10),
+
+                          ...docentiSelezionati.map((uid) {
+                            final doc = listaDocenti.firstWhere((d) => d.id == uid);
+                            final data = doc.data() as Map<String, dynamic>;
+                            return Text(
+                              "- ${data["nome"]} ${data["cognome"]}",
+                              style: const TextStyle(color: Colors.white70),
+                            );
+                          }),
+
+                          const SizedBox(height: 20),
+                        ],
+                      ),
 
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(

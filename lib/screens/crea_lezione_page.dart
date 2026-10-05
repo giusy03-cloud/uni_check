@@ -70,25 +70,30 @@ class _CreaLezionePageState extends State<CreaLezionePage> {
     final auth = Auth();
     final docenteUid = auth.currentUser!.uid;
 
-    // 🔥 Genera token QR (per ora semplice)
-    final qrToken = DateTime.now().millisecondsSinceEpoch.toString();
-
-    await FirebaseFirestore.instance.collection("lezioni").add({
+    // ⭐ CREA LEZIONE (senza QR)
+    final lezioneRef = await FirebaseFirestore.instance.collection("lezioni").add({
       "corsoId": widget.corsoId,
       "docenteId": docenteUid,
       "tipo": tipoLezione,
       "data": Timestamp.fromDate(dataLezione!),
       "oraInizio": "${oraInizio!.hour}:${oraInizio!.minute}",
       "oraFine": "${oraFine!.hour}:${oraFine!.minute}",
-
-      // QR NON attivo al momento della creazione
-      "qrToken": null,
-      "qrScadenza": null,
-      "qrAttivo": false,
-
       "creataIl": FieldValue.serverTimestamp(),
     });
 
+    // ⭐ AGGIUNGI LEZIONE COME COLONNA NEL REGISTRO PRESENZE
+    await FirebaseFirestore.instance
+        .collection("registro_presenze")
+        .doc(widget.corsoId)
+        .update({
+      "lezioni": FieldValue.arrayUnion([
+        {
+          "lezioneId": lezioneRef.id,
+          "data": "${dataLezione!.day}/${dataLezione!.month}/${dataLezione!.year}",
+          "tipo": tipoLezione,
+        }
+      ])
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Lezione creata con successo")),
@@ -148,7 +153,6 @@ class _CreaLezionePageState extends State<CreaLezionePage> {
 
               const SizedBox(height: 20),
 
-              // ⭐ DATA
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.indigoAccent,
@@ -164,7 +168,6 @@ class _CreaLezionePageState extends State<CreaLezionePage> {
 
               const SizedBox(height: 20),
 
-              // ⭐ ORA INIZIO
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.indigoAccent,
@@ -180,7 +183,6 @@ class _CreaLezionePageState extends State<CreaLezionePage> {
 
               const SizedBox(height: 20),
 
-              // ⭐ ORA FINE
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.indigoAccent,
