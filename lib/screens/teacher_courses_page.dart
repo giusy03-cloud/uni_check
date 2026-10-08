@@ -420,6 +420,134 @@ class TeacherCoursesPage extends StatelessWidget {
                                     );
                                   },
                                 ),
+                                const SizedBox(height: 8),
+
+                                if (corso["docenteUid"] == uid)
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                    child: const Text("Elimina corso", style: TextStyle(color: Colors.white)),
+                                    onPressed: () async {
+                                      final conferma = await showDialog(
+                                        context: context,
+                                        builder: (context) {
+                                          return AlertDialog(
+                                            backgroundColor: const Color(0xFF1A1A2E),
+                                            title: const Text("Conferma eliminazione", style: TextStyle(color: Colors.white)),
+                                            content: const Text(
+                                              "Vuoi eliminare definitivamente questo corso?\n"
+                                                  "⚠️ Verranno eliminati:\n"
+                                                  "- studenti\n"
+                                                  "- lezioni\n"
+                                                  "- registro presenze\n"
+                                                  "- docenti condivisi\n"
+                                                  "Azione irreversibile.",
+                                              style: TextStyle(color: Colors.white70),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                child: const Text("Annulla", style: TextStyle(color: Colors.white)),
+                                                onPressed: () => Navigator.pop(context, false),
+                                              ),
+                                              TextButton(
+                                                child: const Text("Elimina", style: TextStyle(color: Colors.redAccent)),
+                                                onPressed: () => Navigator.pop(context, true),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+
+                                      if (conferma == true) {
+
+                                        // ⭐ 1. Recupera studenti iscritti PRIMA di eliminare il corso
+                                        final corsoSnap = await FirebaseFirestore.instance
+                                            .collection("corsi")
+                                            .doc(doc.id)
+                                            .get();
+
+                                        final studentiIscritti = List<dynamic>.from(corsoSnap["studenti"]);
+
+                                        // ⭐ 2. Recupera dati docente (nome, cognome)
+                                        final docenteData = await FirebaseFirestore.instance
+                                            .collection("utenti")
+                                            .doc(uid)
+                                            .get();
+
+                                        final nomeDocente = docenteData.data()?["nome"] ?? "Docente";
+                                        final cognomeDocente = docenteData.data()?["cognome"] ?? "";
+
+                                        // ⭐ 3. Invia notifica a ogni studente
+                                        for (final studUid in studentiIscritti) {
+                                          await FirebaseFirestore.instance.collection("notifiche").add({
+                                            "uidDestinatario": studUid,
+                                            "titolo": "Corso eliminato",
+                                            "messaggio":
+                                            "Il docente $nomeDocente $cognomeDocente ha eliminato il corso \"${corso["nome"]}\".",
+                                            "corsoId": doc.id,
+                                            "timestamp": FieldValue.serverTimestamp(),
+                                            "letto": false,
+                                          });
+                                        }
+
+                                        // ⭐ 4. Elimina registro presenze
+                                        await FirebaseFirestore.instance
+                                            .collection("registro_presenze")
+                                            .doc(doc.id)
+                                            .delete();
+
+                                        // ⭐ 5. Elimina lezioni
+                                        final lezioniSnap = await FirebaseFirestore.instance
+                                            .collection("lezioni")
+                                            .where("corsoId", isEqualTo: doc.id)
+                                            .get();
+
+                                        for (var l in lezioniSnap.docs) {
+                                          await l.reference.delete();
+                                        }
+
+                                        // ⭐ 6. Elimina il corso
+                                        await FirebaseFirestore.instance
+                                            .collection("corsi")
+                                            .doc(doc.id)
+                                            .delete();
+
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text("Corso eliminato"),
+                                            backgroundColor: Colors.redAccent,
+                                          ),
+                                        );
+                                      }
+
+                                    },
+                                  ),
+
+// ⭐ Se sono docente condiviso → RIMUOVIMI DAL CORSO
+                                if (corso["docenteUid"] != uid)
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orangeAccent,
+                                    ),
+                                    child: const Text("Rimuovimi dal corso", style: TextStyle(color: Colors.white)),
+                                    onPressed: () async {
+                                      await FirebaseFirestore.instance
+                                          .collection("corsi")
+                                          .doc(doc.id)
+                                          .update({
+                                        "docentiCondivisi": FieldValue.arrayRemove([uid])
+                                      });
+
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text("Sei stato rimosso dal corso"),
+                                          backgroundColor: Colors.orangeAccent,
+                                        ),
+                                      );
+                                    },
+                                  ),
+
 
 
                               ],
