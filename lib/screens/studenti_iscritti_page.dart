@@ -24,7 +24,8 @@ class StudentiIscrittiPage extends StatelessWidget {
         centerTitle: true,
       ),
 
-      // ⭐ STREAMBUILDER → aggiornamento in tempo reale
+
+
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
             .collection("corsi")
@@ -40,6 +41,35 @@ class StudentiIscrittiPage extends StatelessWidget {
           final corsoData = snapshot.data!.data() as Map<String, dynamic>;
           final studenti = corsoData["studenti"] as List<dynamic>? ?? [];
 
+          // ⭐ SINCRONIZZAZIONE REGISTRO PRESENZE (FUNZIONANTE)
+          Future.microtask(() async {
+            List<Map<String, dynamic>> listaStudentiRegistro = [];
+
+            for (final uid in studenti) {
+              final userDoc = await FirebaseFirestore.instance
+                  .collection("utenti")
+                  .doc(uid)
+                  .get();
+
+              final userData = userDoc.data() as Map<String, dynamic>?;
+
+              if (userData != null) {
+                listaStudentiRegistro.add({
+                  "uid": uid,
+                  "nome": userData["nome"] ?? "",
+                  "cognome": userData["cognome"] ?? "",
+                });
+              }
+            }
+
+            await FirebaseFirestore.instance
+                .collection("registro_presenze")
+                .doc(corsoId)
+                .set({
+              "studenti": listaStudentiRegistro,
+            }, SetOptions(merge: true));
+          });
+
           if (studenti.isEmpty) {
             return const Center(
               child: Text(
@@ -48,6 +78,8 @@ class StudentiIscrittiPage extends StatelessWidget {
               ),
             );
           }
+
+
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -134,12 +166,33 @@ class StudentiIscrittiPage extends StatelessWidget {
                             );
 
                             if (conferma == true) {
+                              // ⭐ 1. Rimuovi lo studente dal corso
                               await FirebaseFirestore.instance
                                   .collection("corsi")
                                   .doc(corsoId)
                                   .update({
                                 "studenti": FieldValue.arrayRemove([uidStudente])
                               });
+
+                              // ⭐ 2. Rimuovi lo studente dal registro presenze (lato docente → permesso OK)
+                              final registroDoc = await FirebaseFirestore.instance
+                                  .collection("registro_presenze")
+                                  .doc(corsoId)
+                                  .get();
+
+                              final listaStudenti = List<Map<String, dynamic>>.from(registroDoc["studenti"]);
+
+                              // ⭐ Rimuovi lo studente filtrando per UID
+                              listaStudenti.removeWhere((stud) => stud["uid"] == uidStudente);
+
+                              // ⭐ Riscrivi la lista aggiornata
+                              await FirebaseFirestore.instance
+                                  .collection("registro_presenze")
+                                  .doc(corsoId)
+                                  .update({
+                                "studenti": listaStudenti,
+                              });
+
                               // ⭐ CREA NOTIFICA PER LO STUDENTE
                               final auth = Auth();
                               final docenteUid = auth.currentUser!.uid;
@@ -161,9 +214,6 @@ class StudentiIscrittiPage extends StatelessWidget {
                                 "letto": false,
                               });
 
-
-
-
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text("Studente eliminato dal corso"),
@@ -171,6 +221,8 @@ class StudentiIscrittiPage extends StatelessWidget {
                                 ),
                               );
                             }
+
+
                           },
                         ),
                       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uni_check_neww/screens/student_lezioni_page.dart';
+import 'package:uni_check_neww/screens/student_presenze_corso.dart';
 import '../auth.dart';
 
 class StudentMyCoursesPage extends StatelessWidget {
@@ -23,6 +24,8 @@ class StudentMyCoursesPage extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection("corsi")
             .where("studenti", arrayContains: user!.uid)
+            .where("attivo", isEqualTo: true)
+
             .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
@@ -97,6 +100,26 @@ class StudentMyCoursesPage extends StatelessWidget {
                             );
                           },
                         ),
+                        const SizedBox(height: 8),
+
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orangeAccent,
+                          ),
+                          child: const Text("Presenze del corso", style: TextStyle(color: Colors.white)),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StudentPresenzeCorsoPage(
+                                  corsoId: corsoDoc.id,
+                                  nomeCorso: corso["nome"],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+
 
                         const SizedBox(height: 8),
 

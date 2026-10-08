@@ -97,20 +97,9 @@ class StudentCoursesPage extends StatelessWidget {
                               "studenti": FieldValue.arrayRemove([user.uid])
                             });
 
-                            // ⭐ RIMUOVI DAL REGISTRO PRESENZE
-                            await FirebaseFirestore.instance
-                                .collection("registro_presenze")
-                                .doc(corso.id)
-                                .update({
-                              "studenti": FieldValue.arrayRemove([
-                                {
-                                  "uid": user.uid,
-                                  "nome": data["nomeStudente"] ?? "",
-                                  "cognome": data["cognomeStudente"] ?? "",
-                                }
-                              ])
-                            });
 
+
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text("Disiscrizione completata"),
@@ -120,7 +109,6 @@ class StudentCoursesPage extends StatelessWidget {
 
                           // ⭐ ISCRIZIONE
                           else {
-                            // 1️⃣ Aggiungi lo studente nel corso
                             await FirebaseFirestore.instance
                                 .collection("corsi")
                                 .doc(corso.id)
@@ -128,7 +116,6 @@ class StudentCoursesPage extends StatelessWidget {
                               "studenti": FieldValue.arrayUnion([user.uid])
                             });
 
-                            // 2️⃣ Recupera nome e cognome dalla collezione utenti
                             final userDoc = await FirebaseFirestore.instance
                                 .collection("utenti")
                                 .doc(user.uid)
@@ -137,11 +124,10 @@ class StudentCoursesPage extends StatelessWidget {
                             final nomeStudente = userDoc.data()?["nome"] ?? "";
                             final cognomeStudente = userDoc.data()?["cognome"] ?? "";
 
-                            // 3️⃣ Aggiungi lo studente come riga nella tabella presenze
                             await FirebaseFirestore.instance
                                 .collection("registro_presenze")
                                 .doc(corso.id)
-                                .update({
+                                .set({
                               "studenti": FieldValue.arrayUnion([
                                 {
                                   "uid": user.uid,
@@ -149,8 +135,9 @@ class StudentCoursesPage extends StatelessWidget {
                                   "cognome": cognomeStudente,
                                 }
                               ])
-                            });
+                            }, SetOptions(merge: true));
 
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text("Iscrizione completata!"),

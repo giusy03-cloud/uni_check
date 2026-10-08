@@ -1,10 +1,12 @@
 import 'dart:ui';
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uni_check_neww/screens/create_course_page.dart';
 import 'package:uni_check_neww/screens/teacher_courses_page.dart';
 import '../auth.dart';
+import 'docente_download_page.dart';
 import 'login_screen.dart';
 
 class TeacherHomePage extends StatefulWidget {
@@ -128,6 +130,23 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                   style: TextStyle(color: Colors.white)),
               onTap: () {},
             ),
+            const Divider(color: Colors.white54),
+
+            ListTile(
+              leading: const Icon(Icons.download, color: Colors.white),
+              title: const Text("Download", style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DocenteDownloadPage(
+                      docenteUid: FirebaseAuth.instance.currentUser!.uid,
+                    ),
+                  ),
+                );
+              },
+            ),
+
 
             const Divider(color: Colors.white54),
 

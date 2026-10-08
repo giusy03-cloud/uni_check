@@ -85,7 +85,7 @@ class _CreaLezionePageState extends State<CreaLezionePage> {
     await FirebaseFirestore.instance
         .collection("registro_presenze")
         .doc(widget.corsoId)
-        .update({
+        .set({
       "lezioni": FieldValue.arrayUnion([
         {
           "lezioneId": lezioneRef.id,
@@ -93,7 +93,8 @@ class _CreaLezionePageState extends State<CreaLezionePage> {
           "tipo": tipoLezione,
         }
       ])
-    });
+    }, SetOptions(merge: true));
+
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Lezione creata con successo")),

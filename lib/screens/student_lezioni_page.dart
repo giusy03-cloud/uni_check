@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'student_presenza_page.dart';
 
@@ -13,8 +14,21 @@ class StudentLezioniPage extends StatelessWidget {
     required this.nomeCorso,
   });
 
+  // ⭐ Controlla se lo studente ha già registrato la presenza
+  Future<bool> presenzaGiaRegistrata(String lezioneId, String uidStudente) async {
+    final snap = await FirebaseFirestore.instance
+        .collection("presenze")
+        .where("lezioneId", isEqualTo: lezioneId)
+        .where("studenteId", isEqualTo: uidStudente)
+        .get();
+
+    return snap.docs.isNotEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final uidStudente = FirebaseAuth.instance.currentUser!.uid;
+
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
@@ -64,10 +78,11 @@ class StudentLezioniPage extends StatelessWidget {
 
               final codice = lezione["codice"];
               final now = DateTime.now();
+              final dataSoloGiorno = DateTime(data.year, data.month, data.day);
               final oggi = DateTime(now.year, now.month, now.day);
 
-              // ⭐ Lezione passata (data < oggi)
-              final lezionePassata = data.isBefore(oggi);
+              final lezionePassata = dataSoloGiorno.isBefore(oggi);
+
 
               // ⭐ Codice scaduto (solo se esiste un codice)
               final codiceScaduto = codice != null &&
@@ -75,9 +90,11 @@ class StudentLezioniPage extends StatelessWidget {
                   scadenza.isBefore(now);
 
               // ⭐ Nascondi lezioni passate o con codice scaduto o senza codice
-              if (lezionePassata || codiceScaduto || codice == null) {
+              // ⭐ Mostra la lezione SOLO quando il codice è attivo
+              if (codice == null || codiceScaduto) {
                 return const SizedBox.shrink();
               }
+
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 20),
@@ -105,23 +122,46 @@ class StudentLezioniPage extends StatelessWidget {
 
                       const SizedBox(height: 12),
 
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.indigoAccent,
-                        ),
-                        child: const Text(
-                          "Registra presenza",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => StudentPresenzaPage(
-                                lezioneId: lezioneId,
-                                nomeLezione: lezione["tipo"],
+                      // ⭐ QUI: controllo presenza già registrata
+                      FutureBuilder(
+                        future: presenzaGiaRegistrata(lezioneId, uidStudente),
+                        builder: (context, snap) {
+                          if (!snap.hasData) {
+                            return const SizedBox();
+                          }
+
+                          final giaPresente = snap.data!;
+
+                          if (giaPresente) {
+                            return const Text(
+                              "Presenza già registrata",
+                              style: TextStyle(
+                                color: Colors.greenAccent,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
+                            );
+                          }
+
+                          return ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.indigoAccent,
                             ),
+                            child: const Text(
+                              "Registra presenza",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => StudentPresenzaPage(
+                                    lezioneId: lezioneId,
+                                    nomeLezione: lezione["tipo"],
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),

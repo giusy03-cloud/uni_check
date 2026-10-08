@@ -57,12 +57,15 @@ class _CreateCoursePageState extends State<CreateCoursePage> {
       "docenteUid": user.uid,
       "docenteEmail": user.email,
 
-      // ⭐ SOLO UID → FUNZIONA CON LE REGOLE FIRESTORE
       "docentiCondivisi": docentiSelezionati,
 
       "studenti": [],
       "createdAt": DateTime.now(),
+
+      // ⭐ IMPORTANTE: il corso è attivo appena creato
+      "attivo": true,
     });
+
 
     // ⭐ CREA LA TABELLA PRESENZE DEL CORSO
     await FirebaseFirestore.instance
