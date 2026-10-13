@@ -50,17 +50,56 @@ class _StudentPresenzaPageState extends State<StudentPresenzaPage> {
           return Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
 
-                // ⭐ Se presenza già registrata → mostra messaggio
+                // ⭐ ICONA + TITOLO
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.verified_user,
+                        color: Colors.indigoAccent, size: 40),
+                    const SizedBox(width: 10),
+                    Text(
+                      "Presenza - ${widget.nomeLezione}",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 40),
+
+                // ⭐ PRESENZA GIÀ REGISTRATA
                 if (presenzaGiaRegistrata) ...[
-                  const Text(
-                    "Presenza già registrata",
-                    style: TextStyle(color: Colors.greenAccent, fontSize: 22),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.check_circle, color: Colors.greenAccent, size: 28),
+                        SizedBox(width: 10),
+                        Text(
+                          "Presenza già registrata",
+                          style: TextStyle(
+                            color: Colors.greenAccent,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
 
-                // ⭐ Se NON registrata → mostra input + bottone
+                // ⭐ SE NON REGISTRATA → INPUT + BOTTONE
                 if (!presenzaGiaRegistrata) ...[
                   const Text(
                     "Inserisci il codice di 4 lettere",
@@ -77,6 +116,7 @@ class _StudentPresenzaPageState extends State<StudentPresenzaPage> {
                       labelStyle: const TextStyle(color: Colors.white70),
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.1),
+                      prefixIcon: const Icon(Icons.lock, color: Colors.white70),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
                         borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
@@ -88,17 +128,27 @@ class _StudentPresenzaPageState extends State<StudentPresenzaPage> {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 30),
 
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigoAccent,
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 40),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.send, color: Colors.white),
+                      label: isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                        "Invia",
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigoAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      onPressed: isLoading ? null : registraPresenza,
                     ),
-                    onPressed: isLoading ? null : registraPresenza,
-                    child: isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text("Invia", style: TextStyle(color: Colors.white)),
                   ),
                 ],
               ],
@@ -106,6 +156,8 @@ class _StudentPresenzaPageState extends State<StudentPresenzaPage> {
           );
         },
       ),
+
+
     );
   }
 

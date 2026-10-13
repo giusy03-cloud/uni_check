@@ -58,6 +58,7 @@ class StudentiIscrittiPage extends StatelessWidget {
                   "uid": uid,
                   "nome": userData["nome"] ?? "",
                   "cognome": userData["cognome"] ?? "",
+                  "email": userData["email"] ?? "",
                 });
               }
             }
@@ -104,36 +105,61 @@ class StudentiIscrittiPage extends StatelessWidget {
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 20),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: Colors.white.withOpacity(0.2)),
                     ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          radius: 25,
-                          backgroundColor: Colors.white.withOpacity(0.3),
+
+                    child: Row(
+                      children: [
+
+                        // ⭐ FOTO PROFILO
+                        CircleAvatar(
+                          radius: 35,
                           backgroundImage: base64Image != null
                               ? MemoryImage(base64Decode(base64Image))
                               : null,
+                          backgroundColor: Colors.white.withOpacity(0.3),
                           child: base64Image == null
-                              ? const Icon(Icons.person,
-                              color: Colors.white, size: 28)
+                              ? const Icon(Icons.person, color: Colors.white, size: 35)
                               : null,
                         ),
 
-                        title: Text(
-                          userData["email"],
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 18),
+                        const SizedBox(width: 15),
+
+                        // ⭐ INFO STUDENTE
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "${userData["nome"]} ${userData["cognome"]}",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+
+                              const SizedBox(height: 4),
+
+                              Text(
+                                userData["email"],
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
 
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.redAccent),
+                        // ⭐ BOTTONE ELIMINA
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.redAccent, size: 30),
                           onPressed: () async {
-                            // ⭐ FINESTRA DI CONFERMA
                             final conferma = await showDialog(
                               context: context,
                               builder: (context) {
@@ -144,21 +170,17 @@ class StudentiIscrittiPage extends StatelessWidget {
                                     style: TextStyle(color: Colors.white),
                                   ),
                                   content: const Text(
-                                    "Sei sicuro di voler eliminare questo studente dal corso?",
+                                    "Vuoi eliminare questo studente dal corso?",
                                     style: TextStyle(color: Colors.white70),
                                   ),
                                   actions: [
                                     TextButton(
-                                      child: const Text("Annulla",
-                                          style: TextStyle(color: Colors.white)),
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
+                                      child: const Text("Annulla", style: TextStyle(color: Colors.white)),
+                                      onPressed: () => Navigator.pop(context, false),
                                     ),
                                     TextButton(
-                                      child: const Text("Elimina",
-                                          style: TextStyle(color: Colors.redAccent)),
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
+                                      child: const Text("Elimina", style: TextStyle(color: Colors.redAccent)),
+                                      onPressed: () => Navigator.pop(context, true),
                                     ),
                                   ],
                                 );
@@ -166,7 +188,7 @@ class StudentiIscrittiPage extends StatelessWidget {
                             );
 
                             if (conferma == true) {
-                              // ⭐ 1. Rimuovi lo studente dal corso
+                              // ⭐ Rimuovi studente dal corso
                               await FirebaseFirestore.instance
                                   .collection("corsi")
                                   .doc(corsoId)
@@ -174,18 +196,15 @@ class StudentiIscrittiPage extends StatelessWidget {
                                 "studenti": FieldValue.arrayRemove([uidStudente])
                               });
 
-                              // ⭐ 2. Rimuovi lo studente dal registro presenze (lato docente → permesso OK)
+                              // ⭐ Rimuovi dal registro presenze
                               final registroDoc = await FirebaseFirestore.instance
                                   .collection("registro_presenze")
                                   .doc(corsoId)
                                   .get();
 
                               final listaStudenti = List<Map<String, dynamic>>.from(registroDoc["studenti"]);
-
-                              // ⭐ Rimuovi lo studente filtrando per UID
                               listaStudenti.removeWhere((stud) => stud["uid"] == uidStudente);
 
-                              // ⭐ Riscrivi la lista aggiornata
                               await FirebaseFirestore.instance
                                   .collection("registro_presenze")
                                   .doc(corsoId)
@@ -193,10 +212,8 @@ class StudentiIscrittiPage extends StatelessWidget {
                                 "studenti": listaStudenti,
                               });
 
-                              // ⭐ CREA NOTIFICA PER LO STUDENTE
-                              final auth = Auth();
-                              final docenteUid = auth.currentUser!.uid;
-
+                              // ⭐ Notifica allo studente
+                              final docenteUid = Auth().currentUser!.uid;
                               final docenteData = await FirebaseFirestore.instance
                                   .collection("utenti")
                                   .doc(docenteUid)
@@ -221,13 +238,12 @@ class StudentiIscrittiPage extends StatelessWidget {
                                 ),
                               );
                             }
-
-
                           },
                         ),
-                      ),
+                      ],
                     ),
                   );
+                  ;
                 },
               );
             },

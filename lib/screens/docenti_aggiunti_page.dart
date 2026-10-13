@@ -41,7 +41,7 @@ class DocentiAggiuntiPage extends StatelessWidget {
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
         title: Text("Docenti aggiunti - $nomeCorso"),
-        backgroundColor: Colors.purpleAccent,
+        backgroundColor: Colors.indigoAccent,
         centerTitle: true,
       ),
 
@@ -73,42 +73,77 @@ class DocentiAggiuntiPage extends StatelessWidget {
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.white.withOpacity(0.2)),
                 ),
-                child: ListTile(
-                  title: Text(
-                    "${d["nome"]} ${d["cognome"]}",
-                    style: const TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-                  subtitle: Text(
-                    d["email"],
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.redAccent),
-                    onPressed: () async {
-                      await FirebaseFirestore.instance
-                          .collection("corsi")
-                          .doc(corsoId)
-                          .update({
-                        "docentiCondivisi": FieldValue.arrayRemove([d["uid"]])
-                      });
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Docente rimosso"),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
+                child: Row(
+                  children: [
 
-                      Navigator.pop(context);
-                    },
-                  ),
+                    // ⭐ ICONA PROFILO DOCENTE
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: Colors.indigoAccent.withOpacity(0.3),
+                      child: const Icon(Icons.person, color: Colors.white, size: 32),
+                    ),
+
+                    const SizedBox(width: 15),
+
+                    // ⭐ INFO DOCENTE
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "${d["nome"]} ${d["cognome"]}",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          const SizedBox(height: 4),
+
+                          Text(
+                            d["email"],
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // ⭐ BOTTONE ELIMINA
+                    IconButton(
+                      icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 30),
+                      onPressed: () async {
+                        await FirebaseFirestore.instance
+                            .collection("corsi")
+                            .doc(corsoId)
+                            .update({
+                          "docentiCondivisi": FieldValue.arrayRemove([d["uid"]])
+                        });
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Docente rimosso"),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ],
                 ),
               );
+
             },
           );
         },

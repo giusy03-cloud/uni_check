@@ -12,6 +12,7 @@ class NotificheStudentePage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
+
       appBar: AppBar(
         title: const Text("Notifiche"),
         backgroundColor: Colors.indigoAccent,
@@ -24,6 +25,7 @@ class NotificheStudentePage extends StatelessWidget {
             .where("uidDestinatario", isEqualTo: user!.uid)
             .orderBy("timestamp", descending: true)
             .snapshots(),
+
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(
@@ -51,64 +53,112 @@ class NotificheStudentePage extends StatelessWidget {
 
               final bool isLetta = n["letto"] == true;
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: isLetta
-                      ? Colors.white.withOpacity(0.08)
-                      : Colors.indigoAccent.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
+              return GestureDetector(
+                onTap: () async {
+                  if (!isLetta) {
+                    await FirebaseFirestore.instance
+                        .collection("notifiche")
+                        .doc(doc.id)
+                        .update({"letto": true});
+                  }
+                },
+
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(20),
+
+                  decoration: BoxDecoration(
                     color: isLetta
-                        ? Colors.white.withOpacity(0.2)
-                        : Colors.indigoAccent.withOpacity(0.6),
+                        ? Colors.white.withOpacity(0.08)
+                        : Colors.indigoAccent.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isLetta
+                          ? Colors.white.withOpacity(0.2)
+                          : Colors.indigoAccent.withOpacity(0.6),
+                    ),
                   ),
-                ),
 
-                child: Material(
-                  color: Colors.transparent,
-                  child: ListTile(
-                    title: Text(
-                      n["titolo"],
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: isLetta ? FontWeight.normal : FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Text(
-                      n["messaggio"],
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontWeight: isLetta ? FontWeight.normal : FontWeight.w600,
-                      ),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
 
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.redAccent),
-                      onPressed: () async {
-                        await FirebaseFirestore.instance
-                            .collection("notifiche")
-                            .doc(doc.id)
-                            .delete();
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Notifica eliminata"),
-                            backgroundColor: Colors.redAccent,
+                      // ⭐ ICONA + TITOLO
+                      Row(
+                        children: [
+                          Icon(
+                            isLetta
+                                ? Icons.notifications_none
+                                : Icons.notifications_active,
+                            color: Colors.white,
+                            size: 30,
                           ),
-                        );
-                      },
-                    ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              n["titolo"],
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: isLetta
+                                    ? FontWeight.normal
+                                    : FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
 
-                    onTap: () async {
-                      await FirebaseFirestore.instance
-                          .collection("notifiche")
-                          .doc(doc.id)
-                          .update({"letto": true});
+                      const SizedBox(height: 10),
 
-                      Navigator.pop(context);
-                    },
+                      // ⭐ MESSAGGIO
+                      Text(
+                        n["messaggio"],
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                          fontWeight: isLetta
+                              ? FontWeight.normal
+                              : FontWeight.w600,
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ⭐ FOOTER: DATA + ELIMINA
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _formatTimestamp(n["timestamp"]),
+                            style: const TextStyle(
+                              color: Colors.white38,
+                              fontSize: 14,
+                            ),
+                          ),
+
+                          IconButton(
+                            icon: const Icon(Icons.delete,
+                                color: Colors.redAccent),
+                            onPressed: () async {
+                              await FirebaseFirestore.instance
+                                  .collection("notifiche")
+                                  .doc(doc.id)
+                                  .delete();
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Notifica eliminata"),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -118,4 +168,11 @@ class NotificheStudentePage extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatTimestamp(Timestamp? ts) {
+  if (ts == null) return "";
+  final date = ts.toDate();
+  return "${date.day}/${date.month}/${date.year} "
+      "${date.hour}:${date.minute.toString().padLeft(2, '0')}";
 }

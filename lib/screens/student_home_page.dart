@@ -19,6 +19,8 @@ class StudentHomePage extends StatefulWidget {
 class _StudentHomePageState extends State<StudentHomePage> {
   String? base64Image;
   String email = "";
+  String nome = "";
+  String cognome = "";
 
   @override
   void initState() {
@@ -41,6 +43,8 @@ class _StudentHomePageState extends State<StudentHomePage> {
       setState(() {
         base64Image = doc.data()?["imageBase64"];
         email = doc.data()?["email"] ?? "";
+        nome = doc.data()?["nome"] ?? "";
+        cognome = doc.data()?["cognome"] ?? "";
       });
     }
   }
@@ -51,192 +55,177 @@ class _StudentHomePageState extends State<StudentHomePage> {
     final currentUser = auth.currentUser;
 
     return Scaffold(
+      backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
-        title: const Text("Studente"),
+        title: const Text("Home Studente"),
         backgroundColor: Colors.indigoAccent,
-        actions: [
-          Builder(
-            builder: (context) => IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () => Scaffold.of(context).openEndDrawer(),
+        centerTitle: true,
+      ),
+
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+
+          // ⭐ FOTO PROFILO
+          CircleAvatar(
+            radius: 60,
+            backgroundImage: base64Image != null
+                ? MemoryImage(base64Decode(base64Image!))
+                : null,
+            backgroundColor: Colors.white.withOpacity(0.3),
+            child: base64Image == null
+                ? const Icon(Icons.person, color: Colors.white, size: 60)
+                : null,
+          ),
+
+          const SizedBox(height: 20),
+
+          // ⭐ BENVENUTO
+          Text(
+            "Benvenuto/a",
+            style: const TextStyle(color: Colors.white, fontSize: 26),
+          ),
+
+          const SizedBox(height: 10),
+
+          // ⭐ NOME + COGNOME
+          Text(
+            "$nome $cognome",
+            style: const TextStyle(color: Colors.white70, fontSize: 20),
+          ),
+
+          const SizedBox(height: 40),
+
+          // ⭐ ICONE IN BASSO
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+
+                // 📚 CORSI
+                _homeIcon(
+                  icon: Icons.book,
+                  label: "Corsi",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const StudentCoursesPage()),
+                    );
+                  },
+                ),
+
+                // ⭐ MIEI CORSI
+                _homeIcon(
+                  icon: Icons.star,
+                  label: "Miei corsi",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const StudentMyCoursesPage()),
+                    );
+                  },
+                ),
+
+                // 🔔 NOTIFICHE
+                Column(
+                  children: [
+                    StreamBuilder(
+                      stream: FirebaseFirestore.instance
+                          .collection("notifiche")
+                          .where("uidDestinatario", isEqualTo: currentUser!.uid)
+                          .where("letto", isEqualTo: false)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        int nonLette = 0;
+                        if (snapshot.hasData) {
+                          nonLette = snapshot.data!.docs.length;
+                        }
+
+                        return InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const NotificheStudentePage()),
+                            );
+                          },
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              CircleAvatar(
+                                radius: 30,
+                                backgroundColor: Colors.indigoAccent,
+                                child: const Icon(Icons.notifications, color: Colors.white, size: 30),
+                              ),
+
+                              // ⭐ BADGE ROSSO
+                              Positioned(
+                                right: -2,
+                                top: -2,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.redAccent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    nonLette.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 8),
+                    const Text("Notifiche", style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+
+
+
+                // 🚪 LOGOUT
+                _homeIcon(
+                  icon: Icons.logout,
+                  label: "Logout",
+                  onTap: () async {
+                    await auth.signOut();
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    );
+                  },
+                ),
+              ],
             ),
           ),
         ],
       ),
+    );
+  }
 
-      endDrawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(color: Colors.indigoAccent),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundImage: base64Image != null
-                        ? MemoryImage(base64Decode(base64Image!))
-                        : null,
-                    backgroundColor: Colors.white.withOpacity(0.3),
-                    child: base64Image == null
-                        ? const Icon(Icons.person,
-                        color: Colors.white, size: 40)
-                        : null,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    email,
-                    style: const TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-                ],
-              ),
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text("Home"),
-              onTap: () => Navigator.pop(context),
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.check_circle),
-              title: const Text("Presenze"),
-              onTap: () {},
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.cancel),
-              title: const Text("Assenze"),
-              onTap: () {},
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.book),
-              title: const Text("Corsi"),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const StudentCoursesPage()),
-                );
-              },
-
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.star),
-              title: const Text("I miei corsi"),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const StudentMyCoursesPage()),
-                );
-              },
-            ),
-            currentUser == null
-                ? const ListTile(
-              leading: Icon(Icons.notifications, color: Colors.white),
-              title: Text("Notifiche", style: TextStyle(color: Colors.white)),
-            )
-                : StreamBuilder(
-              stream: FirebaseFirestore.instance
-                  .collection("notifiche")
-                  .where("uidDestinatario", isEqualTo: currentUser.uid)
-                  .where("letto", isEqualTo: false)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                int nonLette = snapshot.hasData ? snapshot.data!.docs.length : 0;
-
-                return ListTile(
-                  leading: Stack(
-                    children: [
-                      const Icon(Icons.notifications, color: Colors.white),
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeOutBack,
-
-                          // ⭐ cambia dimensione quando cambia il numero → anima
-                          width: 22 + (nonLette.toString().length * 2),
-                          height: 22,
-
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.redAccent.withOpacity(0.6),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-
-                          // ⭐ il numero è sempre bianco → non sembra più una D
-                          child: Center(
-                            child: Text(
-                              nonLette.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    ],
-                  ),
-                  title: const Text("Notifiche", style: TextStyle(color: Colors.black)),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const NotificheStudentePage()),
-                    );
-                  },
-                );
-              },
-            ),
-
-
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text("Logout"),
-              onTap: () async {
-                final auth = Auth();
-                await auth.signOut();
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-
-      body: Center(
-        child: ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
+  // ⭐ WIDGET PER LE ICONE
+  Widget _homeIcon({required IconData icon, required String label, required VoidCallback onTap}) {
+    return Column(
+      children: [
+        InkWell(
+          onTap: onTap,
+          child: CircleAvatar(
+            radius: 30,
             backgroundColor: Colors.indigoAccent,
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 40),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
+            child: Icon(icon, color: Colors.white, size: 30),
           ),
-          icon: const Icon(Icons.camera_alt, size: 30),
-          label: const Text(
-            "Registra Presenza",
-            style: TextStyle(fontSize: 20),
-          ),
-          onPressed: () {
-            // Apri scanner QR
-          },
         ),
-      ),
+        const SizedBox(height: 8),
+        Text(label, style: const TextStyle(color: Colors.white)),
+      ],
     );
   }
 }

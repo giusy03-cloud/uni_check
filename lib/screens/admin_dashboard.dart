@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -8,14 +9,16 @@ class AdminDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
+
       appBar: AppBar(
         backgroundColor: Colors.indigoAccent,
         elevation: 0,
+        centerTitle: true,
         title: const Text(
           "Admin Dashboard",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 22,
+            fontSize: 24,
             color: Colors.white,
           ),
         ),
@@ -26,19 +29,11 @@ class AdminDashboard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            //SEZIONE DOCENTI IN ATTESA
-            const Padding(
-              padding: EdgeInsets.only(left: 16, top: 20, bottom: 10),
-              child: Row(
-                children: [
-                  Icon(Icons.hourglass_bottom, color: Colors.indigoAccent),
-                  SizedBox(width: 10),
-                  Text(
-                    "Docenti in attesa",
-                    style: TextStyle(color: Colors.white, fontSize: 22),
-                  ),
-                ],
-              ),
+            // ⭐ DOCENTI IN ATTESA
+            _sectionTitle(
+              icon: Icons.hourglass_bottom,
+              text: "Docenti in attesa",
+              color: Colors.indigoAccent,
             ),
 
             _buildSection(
@@ -47,9 +42,8 @@ class AdminDashboard extends StatelessWidget {
                   .where("ruolo", isEqualTo: "pending_docente")
                   .snapshots(),
               emptyMessage: "Nessun docente in attesa.",
-              cardColor: Colors.white.withOpacity(0.1),
-              icon: Icons.person,
-              iconColor: Colors.white,
+              badgeText: "In attesa",
+              badgeColor: Colors.orangeAccent,
               approveAction: (id) {
                 FirebaseFirestore.instance.collection("utenti").doc(id).update({
                   "ruolo": "docente",
@@ -59,7 +53,7 @@ class AdminDashboard extends StatelessWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text("Docente approvato!"),
-                    backgroundColor: Colors.green,
+                    backgroundColor: Colors.greenAccent,
                   ),
                 );
               },
@@ -72,25 +66,17 @@ class AdminDashboard extends StatelessWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text("Docente rifiutato."),
-                    backgroundColor: Colors.red,
+                    backgroundColor: Colors.redAccent,
                   ),
                 );
               },
             ),
 
-            // SEZIONE DOCENTI RIFIUTATI
-            const Padding(
-              padding: EdgeInsets.only(left: 16, top: 30, bottom: 10),
-              child: Row(
-                children: [
-                  Icon(Icons.block, color: Colors.redAccent),
-                  SizedBox(width: 10),
-                  Text(
-                    "Docenti rifiutati",
-                    style: TextStyle(color: Colors.white, fontSize: 22),
-                  ),
-                ],
-              ),
+            // ⭐ DOCENTI RIFIUTATI
+            _sectionTitle(
+              icon: Icons.block,
+              text: "Docenti rifiutati",
+              color: Colors.redAccent,
             ),
 
             _buildSection(
@@ -99,11 +85,29 @@ class AdminDashboard extends StatelessWidget {
                   .where("ruolo", isEqualTo: "rifiutato")
                   .snapshots(),
               emptyMessage: "Nessun docente rifiutato.",
-              cardColor: Colors.red.withOpacity(0.15),
-              icon: Icons.block,
-              iconColor: Colors.redAccent,
-              approveAction: null, // nessuna azione
-              rejectAction: null,  // nessuna azione
+              badgeText: "Rifiutato",
+              badgeColor: Colors.redAccent,
+              approveAction: null,
+              rejectAction: null,
+            ),
+
+            // ⭐ DOCENTI APPROVATI
+            _sectionTitle(
+              icon: Icons.verified,
+              text: "Docenti approvati",
+              color: Colors.greenAccent,
+            ),
+
+            _buildSection(
+              query: FirebaseFirestore.instance
+                  .collection("utenti")
+                  .where("ruolo", isEqualTo: "docente")
+                  .snapshots(),
+              emptyMessage: "Nessun docente approvato.",
+              badgeText: "Approvato",
+              badgeColor: Colors.greenAccent,
+              approveAction: null,
+              rejectAction: null,
             ),
           ],
         ),
@@ -111,13 +115,37 @@ class AdminDashboard extends StatelessWidget {
     );
   }
 
-  // WIDGET SEZIONE LISTA
+  // ⭐ TITOLO SEZIONE
+  Widget _sectionTitle({
+    required IconData icon,
+    required String text,
+    required Color color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, top: 25, bottom: 10),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(width: 10),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ⭐ CARD MODERNA
   Widget _buildSection({
     required Stream<QuerySnapshot> query,
     required String emptyMessage,
-    required Color cardColor,
-    required IconData icon,
-    required Color iconColor,
+    required String badgeText,
+    required Color badgeColor,
     Function(String id)? approveAction,
     Function(String id)? rejectAction,
   }) {
@@ -125,7 +153,9 @@ class AdminDashboard extends StatelessWidget {
       stream: query,
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          );
         }
 
         final docs = snapshot.data!.docs;
@@ -135,7 +165,7 @@ class AdminDashboard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Text(
               emptyMessage,
-              style: const TextStyle(color: Colors.white70),
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
             ),
           );
         }
@@ -146,38 +176,102 @@ class AdminDashboard extends StatelessWidget {
           itemCount: docs.length,
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
+
+            final nome = data["nome"] ?? "";
+            final cognome = data["cognome"] ?? "";
             final email = data["email"] ?? "Email mancante";
+            final base64Image = data["imageBase64"];
 
-            return Card(
-              color: cardColor,
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
               ),
-              child: ListTile(
-                leading: Icon(icon, color: iconColor),
-                title: Text(
-                  email,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
 
-                trailing: approveAction != null
-                    ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.check,
-                          color: Colors.greenAccent),
-                      onPressed: () => approveAction(docs[index].id),
+              child: Row(
+                children: [
+
+                  // ⭐ FOTO PROFILO
+                  CircleAvatar(
+                    radius: 32,
+                    backgroundImage: base64Image != null
+                        ? MemoryImage(base64Decode(base64Image))
+                        : null,
+                    backgroundColor: Colors.indigoAccent.withOpacity(0.3),
+                    child: base64Image == null
+                        ? const Icon(Icons.person, color: Colors.white, size: 32)
+                        : null,
+                  ),
+
+                  const SizedBox(width: 15),
+
+                  // ⭐ INFO DOCENTE
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "$nome $cognome",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 4),
+
+                        Text(
+                          email,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        // ⭐ BADGE STATO
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 6, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: badgeColor.withOpacity(0.25),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            badgeText,
+                            style: TextStyle(
+                              color: badgeColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close,
-                          color: Colors.redAccent),
-                      onPressed: () => rejectAction!(docs[index].id),
+                  ),
+
+                  // ⭐ BOTTONI APPROVA / RIFIUTA
+                  if (approveAction != null)
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.check_circle,
+                              color: Colors.greenAccent, size: 32),
+                          onPressed: () => approveAction(docs[index].id),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.cancel,
+                              color: Colors.redAccent, size: 32),
+                          onPressed: () => rejectAction!(docs[index].id),
+                        ),
+                      ],
                     ),
-                  ],
-                )
-                    : null,
+                ],
               ),
             );
           },

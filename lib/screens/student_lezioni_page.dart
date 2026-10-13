@@ -60,7 +60,6 @@ class StudentLezioniPage extends StatelessWidget {
               ),
             );
           }
-
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: lezioni.length,
@@ -71,7 +70,6 @@ class StudentLezioniPage extends StatelessWidget {
 
               final data = (lezione["data"] as Timestamp).toDate();
 
-              // ⭐ Recupero scadenza codice
               final scadenza = lezione["codiceScadenza"] != null
                   ? (lezione["codiceScadenza"] as Timestamp).toDate()
                   : null;
@@ -81,75 +79,109 @@ class StudentLezioniPage extends StatelessWidget {
               final dataSoloGiorno = DateTime(data.year, data.month, data.day);
               final oggi = DateTime(now.year, now.month, now.day);
 
-              final lezionePassata = dataSoloGiorno.isBefore(oggi);
-
-
-              // ⭐ Codice scaduto (solo se esiste un codice)
               final codiceScaduto = codice != null &&
                   scadenza != null &&
                   scadenza.isBefore(now);
 
-              // ⭐ Nascondi lezioni passate o con codice scaduto o senza codice
-              // ⭐ Mostra la lezione SOLO quando il codice è attivo
               if (codice == null || codiceScaduto) {
                 return const SizedBox.shrink();
               }
 
-
               return Container(
                 margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.white.withOpacity(0.2)),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "${lezione["tipo"]} - ${data.day}/${data.month}/${data.year}",
-                        style: const TextStyle(color: Colors.white, fontSize: 20),
-                      ),
 
-                      const SizedBox(height: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
 
-                      Text(
-                        "Orario: ${lezione["oraInizio"]} - ${lezione["oraFine"]}",
-                        style: const TextStyle(color: Colors.white70),
-                      ),
+                    // ⭐ ICONA + TITOLO LEZIONE
+                    Row(
+                      children: [
+                        const Icon(Icons.event, color: Colors.indigoAccent, size: 32),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            "${lezione["tipo"]} - ${data.day}/${data.month}/${data.year}",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
 
-                      const SizedBox(height: 12),
+                    const SizedBox(height: 10),
 
-                      // ⭐ QUI: controllo presenza già registrata
-                      FutureBuilder(
-                        future: presenzaGiaRegistrata(lezioneId, uidStudente),
-                        builder: (context, snap) {
-                          if (!snap.hasData) {
-                            return const SizedBox();
-                          }
+                    // ⭐ ORARIO
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, color: Colors.white70, size: 20),
+                        const SizedBox(width: 6),
+                        Text(
+                          "Orario: ${lezione["oraInizio"]} - ${lezione["oraFine"]}",
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      ],
+                    ),
 
-                          final giaPresente = snap.data!;
+                    const SizedBox(height: 20),
 
-                          if (giaPresente) {
-                            return const Text(
-                              "Presenza già registrata",
-                              style: TextStyle(
-                                color: Colors.greenAccent,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            );
-                          }
+                    // ⭐ BOTTONE REGISTRA PRESENZA
+                    FutureBuilder(
+                      future: presenzaGiaRegistrata(lezioneId, uidStudente),
+                      builder: (context, snap) {
+                        if (!snap.hasData) {
+                          return const SizedBox();
+                        }
 
-                          return ElevatedButton(
+                        final giaPresente = snap.data!;
+
+                        if (giaPresente) {
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.check_circle, color: Colors.greenAccent),
+                                SizedBox(width: 10),
+                                Text(
+                                  "Presenza già registrata",
+                                  style: TextStyle(
+                                    color: Colors.greenAccent,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.login, color: Colors.white),
+                            label: const Text(
+                              "Registra presenza",
+                              style: TextStyle(color: Colors.white, fontSize: 16),
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.indigoAccent,
-                            ),
-                            child: const Text(
-                              "Registra presenza",
-                              style: TextStyle(color: Colors.white),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             onPressed: () {
                               Navigator.push(
@@ -162,15 +194,18 @@ class StudentLezioniPage extends StatelessWidget {
                                 ),
                               );
                             },
-                          );
-                        },
-                      ),
-                    ],
-                  ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               );
             },
           );
+
+
+
         },
       ),
     );

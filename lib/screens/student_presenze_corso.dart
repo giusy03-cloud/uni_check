@@ -75,7 +75,6 @@ class StudentPresenzeCorsoPage extends StatelessWidget {
                   final lezioneId = lezioneDoc.id;
 
                   final data = (lezione["data"] as Timestamp).toDate();
-
                   final presenza = presenzeStudente[lezioneId];
 
                   // ⭐ Recupero codice e scadenza
@@ -88,53 +87,92 @@ class StudentPresenzeCorsoPage extends StatelessWidget {
                   final codiceAttivo =
                       codice != null && scadenza != null && scadenza.isAfter(now);
 
-                  // ⭐ Logica icona presenza
-                  Widget iconaPresenza;
+                  // ⭐ Icona presenza moderna
+                  Icon iconaPresenza;
 
                   if (presenza == 1) {
-                    // ✔ Presenza registrata
-                    iconaPresenza = const Icon(
-                      Icons.check_circle,
-                      color: Colors.greenAccent,
-                      size: 30,
-                    );
+                    iconaPresenza = const Icon(Icons.check_circle,
+                        color: Colors.greenAccent, size: 36);
                   } else if (codiceAttivo) {
-                    // ✔ Codice ancora attivo → NON assenza
-                    iconaPresenza = const Icon(
-                      Icons.hourglass_top,
-                      color: Colors.yellowAccent,
-                      size: 30,
-                    );
+                    iconaPresenza = const Icon(Icons.hourglass_top,
+                        color: Colors.yellowAccent, size: 36);
                   } else {
-                    // ✔ Codice scaduto → assenza
-                    iconaPresenza = const Icon(
-                      Icons.cancel,
-                      color: Colors.redAccent,
-                      size: 30,
-                    );
+                    iconaPresenza = const Icon(Icons.cancel,
+                        color: Colors.redAccent, size: 36);
                   }
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 20),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: Colors.white.withOpacity(0.2)),
                     ),
-                    child: ListTile(
-                      title: Text(
-                        "${lezione["tipo"]} - ${data.day}/${data.month}/${data.year}",
-                        style: const TextStyle(color: Colors.white, fontSize: 18),
-                      ),
-                      subtitle: Text(
-                        "Orario: ${lezione["oraInizio"]} - ${lezione["oraFine"]}",
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      trailing: iconaPresenza,
+
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+
+                        // ⭐ ICONA + TITOLO LEZIONE
+                        Row(
+                          children: [
+                            const Icon(Icons.event, color: Colors.indigoAccent, size: 32),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                "${lezione["tipo"]} - ${data.day}/${data.month}/${data.year}",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            iconaPresenza,
+                          ],
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        // ⭐ ORARIO
+                        Row(
+                          children: [
+                            const Icon(Icons.access_time, color: Colors.white70, size: 20),
+                            const SizedBox(width: 6),
+                            Text(
+                              "Orario: ${lezione["oraInizio"]} - ${lezione["oraFine"]}",
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        // ⭐ STATO PRESENZA TESTUALE
+                        Text(
+                          presenza == 1
+                              ? "Presente"
+                              : codiceAttivo
+                              ? "Codice attivo — puoi ancora registrare"
+                              : "Assente",
+                          style: TextStyle(
+                            color: presenza == 1
+                                ? Colors.greenAccent
+                                : codiceAttivo
+                                ? Colors.yellowAccent
+                                : Colors.redAccent,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 },
               );
+
+
             },
           );
         },

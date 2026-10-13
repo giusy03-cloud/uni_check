@@ -52,44 +52,86 @@ class StudentCoursesPage extends StatelessWidget {
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.white.withOpacity(0.2)),
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: ListTile(
-                    title: Text(
-                      data["nome"],
-                      style: const TextStyle(color: Colors.white, fontSize: 20),
-                    ),
-                    subtitle: Text(
-                      "CFU: ${data["cfu"]}\n"
-                          "Anno: ${data["annoCorso"]}\n"
-                          "Docente: $docenteEmail",
-                      style: const TextStyle(color: Colors.white70),
+
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+
+                    // ⭐ ICONA + TITOLO
+                    Row(
+                      children: [
+                        const Icon(Icons.book, color: Colors.indigoAccent, size: 32),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            data["nome"],
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
 
-                    trailing: SizedBox(
-                      width: 120,
+                    const SizedBox(height: 10),
+
+                    // ⭐ BADGE CFU + ANNO
+                    Row(
+                      children: [
+                        _badge("CFU: ${data["cfu"]}"),
+                        const SizedBox(width: 10),
+                        _badge("Anno: ${data["annoCorso"]}"),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // ⭐ DOCENTE
+                    Row(
+                      children: [
+                        const Icon(Icons.person, color: Colors.white70, size: 20),
+                        const SizedBox(width: 6),
+                        Text(
+                          "Docente: $docenteEmail",
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ⭐ BOTTONE ISCRIZIONE
+                    SizedBox(
+                      width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
                           isIscritto ? Colors.redAccent : Colors.indigoAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         child: Text(
                           isIscritto ? "Disiscriviti" : "Iscriviti",
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 16,
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
 
                         onPressed: () async {
-                          // ⭐ DISISCRIZIONE
                           if (isIscritto) {
+                            // ⭐ DISISCRIZIONE
                             await FirebaseFirestore.instance
                                 .collection("corsi")
                                 .doc(corso.id)
@@ -97,18 +139,14 @@ class StudentCoursesPage extends StatelessWidget {
                               "studenti": FieldValue.arrayRemove([user.uid])
                             });
 
-
-
                             if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text("Disiscrizione completata"),
                               ),
                             );
-                          }
-
-                          // ⭐ ISCRIZIONE
-                          else {
+                          } else {
+                            // ⭐ ISCRIZIONE
                             await FirebaseFirestore.instance
                                 .collection("corsi")
                                 .doc(corso.id)
@@ -123,6 +161,7 @@ class StudentCoursesPage extends StatelessWidget {
 
                             final nomeStudente = userDoc.data()?["nome"] ?? "";
                             final cognomeStudente = userDoc.data()?["cognome"] ?? "";
+                            final emailStudente = user.email ?? "";
 
                             await FirebaseFirestore.instance
                                 .collection("registro_presenze")
@@ -133,6 +172,7 @@ class StudentCoursesPage extends StatelessWidget {
                                   "uid": user.uid,
                                   "nome": nomeStudente,
                                   "cognome": cognomeStudente,
+                                  "email": emailStudente,
                                 }
                               ])
                             }, SetOptions(merge: true));
@@ -147,12 +187,27 @@ class StudentCoursesPage extends StatelessWidget {
                         },
                       ),
                     ),
-                  ),
+                  ],
                 ),
               );
             },
           );
         },
+      ),
+    );
+  }
+
+  // ⭐ BADGE GRAFICO
+  Widget _badge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.indigoAccent.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(color: Colors.white, fontSize: 14),
       ),
     );
   }

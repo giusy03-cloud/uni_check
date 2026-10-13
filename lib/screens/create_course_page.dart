@@ -132,6 +132,33 @@ class _CreateCoursePageState extends State<CreateCoursePage> {
       },
     );
   }
+  List<DropdownMenuItem<String>> _buildAnniAccademici() {
+    final now = DateTime.now();
+    int year = now.year;
+
+    // ⭐ Se siamo prima di settembre → anno accademico è quello precedente
+    if (now.month < 9) {
+      year = year - 1;
+    }
+
+    // ⭐ Generiamo 5 anni accademici futuri
+    List<DropdownMenuItem<String>> anni = [];
+
+    for (int i = 0; i < 5; i++) {
+      final start = year + i;
+      final end = start + 1;
+      final label = "$start/$end";
+
+      anni.add(
+        DropdownMenuItem(
+          value: label,
+          child: Text(label),
+        ),
+      );
+    }
+
+    return anni;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -162,23 +189,41 @@ class _CreateCoursePageState extends State<CreateCoursePage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
 
+                    // ⭐ TITOLO MODERNO
+                    const Text(
+                      "Crea un nuovo corso",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
                     _buildInput("Nome del corso", _courseNameController),
                     const SizedBox(height: 20),
 
                     DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: annoAccademico,
-                        dropdownColor: Colors.black.withOpacity(0.4),
-                        iconEnabledColor: Colors.white,
-                        style: const TextStyle(color: Colors.white),
-                        items: const [
-                          DropdownMenuItem(value: "2025/2026", child: Text("2025/2026")),
-                          DropdownMenuItem(value: "2026/2027", child: Text("2026/2027")),
-                          DropdownMenuItem(value: "2027/2028", child: Text("2027/2028")),
-                        ],
-                        onChanged: (value) => setState(() => annoAccademico = value!),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        ),
+                        child: DropdownButton<String>(
+                          value: annoAccademico,
+                          dropdownColor: Colors.black.withOpacity(0.4),
+                          iconEnabledColor: Colors.white,
+                          style: const TextStyle(color: Colors.white),
+                          items: _buildAnniAccademici(),
+
+                          onChanged: (value) => setState(() => annoAccademico = value!),
+                        ),
                       ),
                     ),
+
                     const SizedBox(height: 20),
 
                     _buildInput("Anno di corso (es. 1)", _annoCorsoController),
@@ -188,57 +233,83 @@ class _CreateCoursePageState extends State<CreateCoursePage> {
                     const SizedBox(height: 20),
 
                     _buildInput("Numero lezioni totali nel trimestre", _numeroLezioniController),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 30),
 
-                    // ⭐ Bottone aggiungi docente
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orangeAccent,
+                    // ⭐ BOTTONE AGGIUNGI DOCENTE — INDACO MODERNO
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.group_add, color: Colors.white),
+                        label: const Text(
+                          "Aggiungi docente/esercitatore",
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigoAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                        onPressed: () => _apriPopupAggiungiDocente(context),
                       ),
-                      child: const Text("Aggiungi docente/esercitatore", style: TextStyle(color: Colors.white)),
-                      onPressed: () {
-                        _apriPopupAggiungiDocente(context);
-                      },
                     ),
 
                     const SizedBox(height: 20),
 
-                    // ⭐ Mostra docenti selezionati
+                    // ⭐ LISTA DOCENTI AGGIUNTI
                     if (docentiSelezionati.isNotEmpty)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Docenti aggiunti:", style: TextStyle(color: Colors.white)),
+                          const Text(
+                            "Docenti aggiunti:",
+                            style: TextStyle(color: Colors.white, fontSize: 18),
+                          ),
                           const SizedBox(height: 10),
 
                           ...docentiSelezionati.map((uid) {
                             final doc = listaDocenti.firstWhere((d) => d.id == uid);
                             final data = doc.data() as Map<String, dynamic>;
-                            return Text(
-                              "- ${data["nome"]} ${data["cognome"]}",
-                              style: const TextStyle(color: Colors.white70),
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                "${data["nome"]} ${data["cognome"]}",
+                                style: const TextStyle(color: Colors.white70, fontSize: 16),
+                              ),
                             );
                           }),
-
-                          const SizedBox(height: 20),
                         ],
                       ),
 
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigoAccent,
-                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 40),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                      ),
-                      onPressed: isLoading ? null : createCourse,
-                      child: isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                        "Crea Corso",
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                    const SizedBox(height: 30),
+
+                    // ⭐ BOTTONE CREA CORSO — INDACO MODERNO
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigoAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        onPressed: isLoading ? null : createCourse,
+                        child: isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text(
+                          "Crea Corso",
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -249,6 +320,7 @@ class _CreateCoursePageState extends State<CreateCoursePage> {
           ),
         ],
       ),
+
     );
   }
 

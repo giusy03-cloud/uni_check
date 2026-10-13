@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'docente_mostra_codice_page.dart';
+
 
 String generaCodice() {
   const lettere = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -119,41 +119,69 @@ class _LezioniCorsoPageState extends State<LezioniCorsoPage> {
                   countdown = "${diff.inSeconds}s";
                 }
               }
-
               return Container(
                 margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.white.withOpacity(0.2)),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
 
-                      Text(
-                        "$tipo - ${data.day}/${data.month}/${data.year}",
-                        style: const TextStyle(color: Colors.white, fontSize: 20),
-                      ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
 
-                      const SizedBox(height: 6),
-
-                      Text(
-                        "Orario: $oraInizio - $oraFine",
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // ⭐ Nessun codice generato → bottone genera codice
-                      if (codice == null) ...[
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.greenAccent.shade700,
+                    // ⭐ ICONA + TITOLO
+                    Row(
+                      children: [
+                        Icon(
+                          tipo == "teoria" ? Icons.menu_book : Icons.science,
+                          color: Colors.indigoAccent,
+                          size: 32,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            "$tipo - ${data.day}/${data.month}/${data.year}",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          child: const Text("Genera Codice", style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // ⭐ ORARIO
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, color: Colors.white70, size: 20),
+                        const SizedBox(width: 6),
+                        Text(
+                          "Orario: $oraInizio - $oraFine",
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ⭐ NESSUN CODICE → GENERA
+                    if (codice == null) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.qr_code, color: Colors.white),
+                          label: const Text("Genera codice", style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.indigoAccent,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
                           onPressed: () async {
                             final nuovoCodice = generaCodice();
 
@@ -172,35 +200,42 @@ class _LezioniCorsoPageState extends State<LezioniCorsoPage> {
                             );
                           },
                         ),
-                      ],
-
-                      // ⭐ Codice attivo
-                      if (codice != null && !codiceScaduto) ...[
-                        Text(
-                          "Codice attivo: $codice ${countdown.isNotEmpty ? "($countdown)" : ""}",
-                          style: const TextStyle(color: Colors.greenAccent, fontSize: 18),
-                        ),
-                        const SizedBox(height: 12),
-
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.indigoAccent,
-                          ),
-                          child: const Text("Mostra Codice", style: TextStyle(color: Colors.white)),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => DocenteMostraCodicePage(lezioneId: lezioneId),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
+                      ),
                     ],
-                  ),
+
+                    // ⭐ CODICE ATTIVO
+                    if (codice != null && !codiceScaduto) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle, color: Colors.greenAccent),
+                            const SizedBox(width: 10),
+                            Text(
+                              "Codice attivo: $codice ${countdown.isNotEmpty ? "($countdown)" : ""}",
+                              style: const TextStyle(
+                                color: Colors.greenAccent,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+
+
+
+                    ],
+                  ],
                 ),
               );
+
+
             },
           );
         },

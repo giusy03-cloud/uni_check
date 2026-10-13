@@ -114,109 +114,153 @@ class _CreaLezionePageState extends State<CreaLezionePage> {
       ),
 
       body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
+        padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
 
+              // ⭐ TITOLO
+              Text(
+                "Crea una nuova lezione",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 30),
+
+              // ⭐ TIPO LEZIONE
               const Text(
                 "Tipo lezione",
                 style: TextStyle(color: Colors.white, fontSize: 18),
               ),
               const SizedBox(height: 8),
 
-              DropdownButtonFormField(
-                dropdownColor: const Color(0xFF1A1A2E),
-                value: tipoLezione,
-                items: const [
-                  DropdownMenuItem(
-                    value: "teoria",
-                    child: Text("Teoria", style: TextStyle(color: Colors.white)),
-                  ),
-                  DropdownMenuItem(
-                    value: "laboratorio",
-                    child: Text("Laboratorio", style: TextStyle(color: Colors.white)),
-                  ),
-                ],
-                onChanged: (value) {
-                  setState(() => tipoLezione = value!);
-                },
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: tipoLezione,
+                    dropdownColor: Colors.black.withOpacity(0.4),
+                    iconEnabledColor: Colors.white,
+                    style: const TextStyle(color: Colors.white),
+                    items: const [
+                      DropdownMenuItem(value: "teoria", child: Text("Teoria")),
+                      DropdownMenuItem(value: "laboratorio", child: Text("Laboratorio")),
+                    ],
+                    onChanged: (value) => setState(() => tipoLezione = value!),
                   ),
                 ),
+              ),
+
+              const SizedBox(height: 30),
+
+              // ⭐ DATA LEZIONE
+              _modernButton(
+                icon: Icons.calendar_month,
+                text: dataLezione == null
+                    ? "Seleziona data"
+                    : "Data: ${dataLezione!.day}/${dataLezione!.month}/${dataLezione!.year}",
+                onTap: _selezionaData,
               ),
 
               const SizedBox(height: 20),
 
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.indigoAccent,
-                ),
-                onPressed: _selezionaData,
-                child: Text(
-                  dataLezione == null
-                      ? "Seleziona data"
-                      : "Data: ${dataLezione!.day}/${dataLezione!.month}/${dataLezione!.year}",
-                  style: const TextStyle(color: Colors.white),
-                ),
+              // ⭐ ORA INIZIO
+              _modernButton(
+                icon: Icons.access_time,
+                text: oraInizio == null
+                    ? "Seleziona ora inizio"
+                    : "Ora inizio: ${oraInizio!.hour}:${oraInizio!.minute}",
+                onTap: _selezionaOraInizio,
               ),
 
               const SizedBox(height: 20),
 
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.indigoAccent,
-                ),
-                onPressed: _selezionaOraInizio,
-                child: Text(
-                  oraInizio == null
-                      ? "Seleziona ora inizio"
-                      : "Ora inizio: ${oraInizio!.hour}:${oraInizio!.minute}",
-                  style: const TextStyle(color: Colors.white),
-                ),
+              // ⭐ ORA FINE
+              _modernButton(
+                icon: Icons.access_time_filled,
+                text: oraFine == null
+                    ? "Seleziona ora fine"
+                    : "Ora fine: ${oraFine!.hour}:${oraFine!.minute}",
+                onTap: _selezionaOraFine,
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 40),
 
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.indigoAccent,
-                ),
-                onPressed: _selezionaOraFine,
-                child: Text(
-                  oraFine == null
-                      ? "Seleziona ora fine"
-                      : "Ora fine: ${oraFine!.hour}:${oraFine!.minute}",
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-
-              const Spacer(),
-
-              Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.greenAccent.shade700,
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 16, horizontal: 40),
-                  ),
-                  onPressed: _salvaLezione,
-                  child: const Text(
+              // ⭐ CREA LEZIONE
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.check_circle, color: Colors.white),
+                  label: const Text(
                     "Crea lezione",
                     style: TextStyle(color: Colors.white, fontSize: 18),
                   ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigoAccent,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  onPressed: _salvaLezione,
                 ),
               ),
             ],
           ),
         ),
       ),
+
+
     );
   }
+}
+
+Widget _modernButton({
+  required IconData icon,
+  required String text,
+  required VoidCallback onTap,
+}) {
+  return Container(
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: Colors.white.withOpacity(0.2)),
+    ),
+    child: ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.indigoAccent.withOpacity(0.9),
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      onPressed: onTap,
+      child: Row(
+        children: [
+          Icon(icon, size: 26, color: Colors.white),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
