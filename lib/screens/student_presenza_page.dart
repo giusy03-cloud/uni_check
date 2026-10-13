@@ -176,11 +176,25 @@ class _StudentPresenzaPageState extends State<StudentPresenzaPage> {
       errore("Codice errato");
     } else {
       // ⭐ CREA PRESENZA
+      // ⭐ Recupera dati studente
+      final studDoc = await FirebaseFirestore.instance
+          .collection("utenti")
+          .doc(uidStudente)
+          .get();
+
+      final studData = studDoc.data()!;
+
+// ⭐ Salva presenza nella collezione presenze (storico)
       await FirebaseFirestore.instance.collection("presenze").add({
         "lezioneId": widget.lezioneId,
         "studenteId": uidStudente,
         "corsoId": lezione["corsoId"],
         "timestamp": FieldValue.serverTimestamp(),
+
+        // ⭐ Aggiunta richiesta dal prof
+        "nome": studData["nome"],
+        "cognome": studData["cognome"],
+        "email": studData["email"],
       });
 
       await FirebaseFirestore.instance
@@ -189,6 +203,23 @@ class _StudentPresenzaPageState extends State<StudentPresenzaPage> {
           .update({
         "presenze.${uidStudente}.${widget.lezioneId}": 1,
       });
+
+      await FirebaseFirestore.instance
+          .collection("registro_presenze")
+          .doc(lezione["corsoId"])
+          .update({
+        "presenze_temp.${widget.lezioneId}.${uidStudente}": {
+          "uid": uidStudente,
+          "nome": studData["nome"],
+          "cognome": studData["cognome"],
+          "email": studData["email"],
+          "presente": 1,
+          "timestamp": FieldValue.serverTimestamp(),
+        }
+      });
+
+
+
       ok("Presenza registrata!");
 
       await Future.delayed(const Duration(milliseconds: 600));

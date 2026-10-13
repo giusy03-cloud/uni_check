@@ -524,7 +524,7 @@ class TeacherCoursesPage extends StatelessWidget {
                                     },
                                   ),
 
-// ⭐ Se sono docente condiviso → RIMUOVIMI DAL CORSO
+                                // ⭐ Se sono docente condiviso → RIMUOVIMI DAL CORSO
                                 if (corso["docenteUid"] != uid)
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(
