@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uni_check_neww/screens/studenti_a_rischio_page.dart';
 import '../auth.dart';
 import 'docenti_aggiunti_page.dart';
 import 'studenti_iscritti_page.dart';
@@ -13,32 +14,26 @@ class TeacherCoursesPage extends StatelessWidget {
 
   // ⭐ Recupera nome e cognome del docente proprietario
   Future<Map<String, dynamic>> _getDocente(String uid) async {
-    final snap = await FirebaseFirestore.instance
-        .collection("utenti")
-        .doc(uid)
-        .get();
-
+    final snap =
+    await FirebaseFirestore.instance.collection("utenti").doc(uid).get();
     return snap.data() ?? {};
   }
 
   // ⭐ Recupera lista dei docenti condivisi (UID → dati)
-  Future<List<Map<String, dynamic>>> _getDocentiCondivisi(List<dynamic> listaUid) async {
+  Future<List<Map<String, dynamic>>> _getDocentiCondivisi(
+      List<dynamic> listaUid) async {
     List<Map<String, dynamic>> lista = [];
 
     for (var uid in listaUid) {
-      final snap = await FirebaseFirestore.instance
-          .collection("utenti")
-          .doc(uid)
-          .get();
-
-      if (snap.exists) {
-        lista.add(snap.data()!);
-      }
+      final snap =
+      await FirebaseFirestore.instance.collection("utenti").doc(uid).get();
+      if (snap.exists) lista.add(snap.data()!);
     }
 
     return lista;
   }
 
+  // ⭐ Popup aggiungi docente con barra di ricerca
   void _showAggiungiDocentePopup(
       BuildContext context,
       String corsoId,
@@ -46,91 +41,294 @@ class TeacherCoursesPage extends StatelessWidget {
       List<dynamic> listaUid,
       String nomeCorso,
       ) {
+    String searchText = "";
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1A1A2E),
+              title: Text(
+                "Aggiungi docente a $nomeCorso",
+                style: const TextStyle(color: Colors.white),
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // ⭐ BARRA DI RICERCA
+                    TextField(
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: "Cerca per nome, cognome o email",
+                        hintStyle: const TextStyle(color: Colors.white70),
+                        prefixIcon:
+                        const Icon(Icons.search, color: Colors.white70),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.1),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() => searchText = value.toLowerCase().trim());
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ⭐ LISTA DOCENTI
+                    Expanded(
+                      child: StreamBuilder(
+                        stream: FirebaseFirestore.instance
+                            .collection("utenti")
+                            .where("ruolo", isEqualTo: "docente")
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                  color: Colors.white),
+                            );
+                          }
+
+                          final docenti = snapshot.data!.docs;
+
+                          // ⭐ Filtra: niente proprietario, niente già aggiunti
+                          var filtrati = docenti.where((d) {
+                            final uid = d.id;
+                            return uid != docenteProprietarioUid &&
+                                !listaUid.contains(uid);
+                          }).toList();
+
+                          // ⭐ Filtra per ricerca
+                          if (searchText.isNotEmpty) {
+                            filtrati = filtrati.where((d) {
+                              final data = d.data();
+                              final nome =
+                              (data["nome"] ?? "").toLowerCase();
+                              final cognome =
+                              (data["cognome"] ?? "").toLowerCase();
+                              final email =
+                              (data["email"] ?? "").toLowerCase();
+
+                              return nome.contains(searchText) ||
+                                  cognome.contains(searchText) ||
+                                  email.contains(searchText);
+                            }).toList();
+                          }
+
+                          if (filtrati.isEmpty) {
+                            return const Text(
+                              "Nessun docente trovato.",
+                              style: TextStyle(color: Colors.white70),
+                            );
+                          }
+
+                          return ListView.builder(
+                            itemCount: filtrati.length,
+                            itemBuilder: (context, index) {
+                              final d = filtrati[index].data();
+                              final uid = filtrati[index].id;
+
+                              return ListTile(
+                                title: Text(
+                                  "${d["nome"]} ${d["cognome"]}",
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                subtitle: Text(
+                                  d["email"],
+                                  style:
+                                  const TextStyle(color: Colors.white70),
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.add_circle,
+                                      color: Colors.tealAccent),
+                                  onPressed: () async {
+                                    await FirebaseFirestore.instance
+                                        .collection("corsi")
+                                        .doc(corsoId)
+                                        .update({
+                                      "docentiCondivisi":
+                                      FieldValue.arrayUnion([uid])
+                                    });
+
+                                    Navigator.pop(context);
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            "Docente aggiunto: ${d["nome"]} ${d["cognome"]}"),
+                                        backgroundColor:
+                                        Colors.tealAccent.shade700,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text("Chiudi",
+                      style: TextStyle(color: Colors.white)),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ⭐ Mini dashboard del corso
+  void _showDashboardCorso(
+      BuildContext context,
+      String corsoId,
+      String nomeCorso,
+      List<dynamic> listaUid,
+      bool isCondiviso,
+      String uidDocente,
+      int lezioniEffettuate,
+      int lezioniTotali,
+      ) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1A1A2E),
           title: Text(
-            "Aggiungi docente a $nomeCorso",
-            style: const TextStyle(color: Colors.white),
+            nomeCorso,
+            style: const TextStyle(color: Colors.white, fontSize: 22),
           ),
           content: SizedBox(
             width: double.maxFinite,
-            child: StreamBuilder(
-              stream: FirebaseFirestore.instance
-                  .collection("utenti")
-                  .where("ruolo", isEqualTo: "docente")
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  );
-                }
-
-                final docenti = snapshot.data!.docs;
-
-                // ⭐ Filtra: niente proprietario, niente già aggiunti
-                final filtrati = docenti.where((d) {
-                  final uid = d.id;
-                  return uid != docenteProprietarioUid && !listaUid.contains(uid);
-                }).toList();
-
-                if (filtrati.isEmpty) {
-                  return const Text(
-                    "Nessun docente disponibile.",
-                    style: TextStyle(color: Colors.white70),
-                  );
-                }
-
-                return SizedBox(
-                  height: 300,
-                  child: ListView.builder(
-                    itemCount: filtrati.length,
-                    itemBuilder: (context, index) {
-                      final d = filtrati[index].data();
-                      final uid = filtrati[index].id;
-
-                      return ListTile(
-                        title: Text(
-                          "${d["nome"]} ${d["cognome"]}",
-                          style: const TextStyle(color: Colors.white),
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _miniBtn(
+                  icon: Icons.group,
+                  text: "Iscritti",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => StudentiIscrittiPage(
+                          corsoId: corsoId,
+                          nomeCorso: nomeCorso,
                         ),
-                        subtitle: Text(
-                          d["email"],
-                          style: const TextStyle(color: Colors.white70),
+                      ),
+                    );
+                  },
+                ),
+                _miniBtn(
+                  icon: Icons.add_circle,
+                  text: "Crea lezione",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CreaLezionePage(
+                          corsoId: corsoId,
+                          nomeCorso: nomeCorso,
                         ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.add_circle, color: Colors.tealAccent),
-                          onPressed: () async {
-                            await FirebaseFirestore.instance
-                                .collection("corsi")
-                                .doc(corsoId)
-                                .update({
-                              "docentiCondivisi": FieldValue.arrayUnion([uid])
-                            });
-
-                            Navigator.pop(context);
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Docente aggiunto: ${d["nome"]} ${d["cognome"]}"),
-                                backgroundColor: Colors.tealAccent.shade700,
-                              ),
-                            );
-                          },
+                      ),
+                    );
+                  },
+                ),
+                _miniBtn(
+                  icon: Icons.event,
+                  text: "Lezioni",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => LezioniCorsoPage(
+                          corsoId: corsoId,
+                          nomeCorso: nomeCorso,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                _miniBtn(
+                  icon: Icons.fact_check,
+                  text: "Registro",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DocenteRegistroPresenzePage(
+                          corsoId: corsoId,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                _miniBtn(
+                  icon: Icons.person_add,
+                  text: "Aggiungi docente",
+                  onTap: () {
+                    _showAggiungiDocentePopup(
+                      context,
+                      corsoId,
+                      uidDocente,
+                      listaUid,
+                      nomeCorso,
+                    );
+                  },
+                ),
+                _miniBtn(
+                  icon: Icons.school,
+                  text: "Docenti aggiunti",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DocentiAggiuntiPage(
+                          corsoId: corsoId,
+                          nomeCorso: nomeCorso,
+                          listaUid: listaUid,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                if (lezioniEffettuate >= (lezioniTotali / 2))
+                  _miniBtn(
+                    icon: Icons.warning_amber_rounded,
+                    text: "Studenti a rischio",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => StudentiARischioPage(
+                            corsoId: corsoId,
+                            nomeCorso: nomeCorso,
+                          ),
                         ),
                       );
                     },
                   ),
-                );
-              },
+
+              ],
             ),
           ),
           actions: [
             TextButton(
-              child: const Text("Chiudi", style: TextStyle(color: Colors.white)),
+              child:
+              const Text("Chiudi", style: TextStyle(color: Colors.white)),
               onPressed: () => Navigator.pop(context),
             ),
           ],
@@ -139,9 +337,9 @@ class TeacherCoursesPage extends StatelessWidget {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final auth = Auth();
     final user = auth.currentUser;
 
@@ -153,13 +351,11 @@ class TeacherCoursesPage extends StatelessWidget {
 
     final uid = user.uid;
 
-    // ⭐ Query 1: corsi creati da me
     final streamProprietario = FirebaseFirestore.instance
         .collection("corsi")
         .where("docenteUid", isEqualTo: uid)
         .snapshots();
 
-    // ⭐ Query 2: corsi dove sono docente condiviso
     final streamCondivisi = FirebaseFirestore.instance
         .collection("corsi")
         .where("docentiCondivisi", arrayContains: uid)
@@ -168,8 +364,9 @@ class TeacherCoursesPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
+        backgroundColor: theme.colorScheme.background,
         title: const Text("I miei corsi"),
-        backgroundColor: Colors.indigoAccent,
+
         centerTitle: true,
       ),
 
@@ -191,7 +388,6 @@ class TeacherCoursesPage extends StatelessWidget {
                     final proprietario = snapshot1.data!.docs;
                     final condivisi = snapshot2.data!.docs;
 
-                    // ⭐ Unisci corsi
                     final corsi = [...proprietario, ...condivisi];
 
                     if (corsi.isEmpty) {
@@ -210,242 +406,202 @@ class TeacherCoursesPage extends StatelessWidget {
                         final doc = corsi[index];
                         final corso = doc.data();
                         final bool isCondiviso = corso["docenteUid"] != uid;
-                        final List<dynamic> listaUid = corso["docentiCondivisi"] ?? [];
+                        final List<dynamic> listaUid =
+                            corso["docentiCondivisi"] ?? [];
 
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 20),
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withOpacity(0.2)),
-                          ),
+                        return StreamBuilder(
+                          stream: FirebaseFirestore.instance
+                              .collection("lezioni")
+                              .where("corsoId", isEqualTo: doc.id)
+                              .snapshots(),
+                          builder: (context, snapLezioni) {
+                            if (!snapLezioni.hasData) {
+                              return const SizedBox();
+                            }
 
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                            final lezioniEffettuate = snapLezioni.data!.docs.where((doc) {
+                              final l = doc.data() as Map<String, dynamic>;
+                              return l["codice"] != null; // ⭐ Lezione avviata
+                            }).length;
 
-                              // ⭐ ICONA + TITOLO
-                              Row(
-                                children: [
-                                  const Icon(Icons.book, color: Colors.indigoAccent, size: 32),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      corso["nome"],
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                            final lezioniTotali =
+                            corso["numeroLezioniTotali"];
+                            final lezioniRimanenti =
+                                lezioniTotali - lezioniEffettuate;
+
+                            // ⭐ STATO CORSO
+                            String statoCorso;
+                            Color coloreStato;
+
+                            if (lezioniEffettuate == 0) {
+                              statoCorso = "Non iniziato";
+                              coloreStato = Colors.redAccent;
+                            } else if (lezioniEffettuate < lezioniTotali) {
+                              statoCorso = "In corso";
+                              coloreStato = Colors.yellowAccent;
+                            } else {
+                              statoCorso = "Completato";
+                              coloreStato = Colors.greenAccent;
+                            }
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 20),
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: Colors.white.withOpacity(0.2)),
                               ),
-
-                              const SizedBox(height: 10),
-
-                              // ⭐ BADGE CONDIVISIONE
-                              FutureBuilder(
-                                future: _getDocente(corso["docenteUid"]),
-                                builder: (context, snapProprietario) {
-                                  final proprietario = snapProprietario.data ?? {};
-                                  final nomeProprietario = proprietario["nome"] ?? "";
-                                  final cognomeProprietario = proprietario["cognome"] ?? "";
-
-                                  return FutureBuilder(
-                                    future: _getDocentiCondivisi(listaUid),
-                                    builder: (context, snapCondivisi) {
-                                      final condivisiList = snapCondivisi.data ?? [];
-
-                                      String badgeText = "";
-
-                                      if (!isCondiviso && condivisiList.isNotEmpty) {
-                                        final nomi = condivisiList
-                                            .map((d) => "${d["nome"]} ${d["cognome"]}")
-                                            .join(", ");
-                                        badgeText = "Condiviso con:\n$nomi";
-                                      } else if (isCondiviso) {
-                                        badgeText =
-                                        "Aggiunto da:\n$nomeProprietario $cognomeProprietario";
-                                      }
-
-                                      return badgeText.isEmpty
-                                          ? const SizedBox()
-                                          : Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.indigoAccent.withOpacity(0.3),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // ⭐ HEADER: titolo + cestino
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.book,
+                                          color: Colors.indigoAccent,
+                                          size: 32),
+                                      const SizedBox(width: 10),
+                                      Expanded(
                                         child: Text(
-                                          badgeText,
+                                          corso["nome"],
                                           style: const TextStyle(
                                             color: Colors.white,
-                                            fontSize: 13,
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                      );
-                                    },
-                                  );
-                                },
-                              ),
-
-                              const SizedBox(height: 15),
-
-                              // ⭐ INFO CORSO
-                              Text(
-                                "Anno accademico: ${corso["annoAccademico"]}\n"
-                                    "CFU: ${corso["cfu"]}\n"
-                                    "Lezioni totali: ${corso["numeroLezioniTotali"]}",
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              // ⭐ PULSANTI MODERNI
-                              _btn(
-                                icon: Icons.group,
-                                text: "Studenti iscritti",
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => StudentiIscrittiPage(
-                                        corsoId: doc.id,
-                                        nomeCorso: corso["nome"],
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
+                                      if (!isCondiviso)
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_forever,
+                                            color: Colors.redAccent,
+                                            size: 30,
+                                          ),
+                                          onPressed: () {
+                                            // TODO: conferma eliminazione corso
+                                          },
+                                        ),
+                                    ],
+                                  ),
 
-                              const SizedBox(height: 10),
+                                  const SizedBox(height: 15),
 
-                              _btn(
-                                icon: Icons.add_circle,
-                                text: "Crea lezione",
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => CreaLezionePage(
-                                        corsoId: doc.id,
-                                        nomeCorso: corso["nome"],
+                                  // ⭐ INFO CORSO
+                                  Text(
+                                    "Anno accademico: ${corso["annoAccademico"]}\n"
+                                        "CFU: ${corso["cfu"]}\n"
+                                        "Lezioni totali: $lezioniTotali\n"
+                                        "Lezioni effettuate: $lezioniEffettuate\n"
+                                        "Lezioni rimanenti: $lezioniRimanenti",
+                                    style: const TextStyle(
+                                        color: Colors.white70),
+                                  ),
+
+                                  const SizedBox(height: 10),
+
+                                  // ⭐ STATO CORSO
+                                  Row(
+                                    children: [
+                                      Icon(Icons.circle,
+                                          color: coloreStato, size: 14),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        statoCorso,
+                                        style: TextStyle(
+                                          color: coloreStato,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
+                                    ],
+                                  ),
 
-                              const SizedBox(height: 10),
+                                  const SizedBox(height: 20),
 
-                              _btn(
-                                icon: Icons.event,
-                                text: "Lezioni del corso",
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => LezioniCorsoPage(
-                                        corsoId: doc.id,
-                                        nomeCorso: corso["nome"],
+                                  // ⭐ PULSANTE APRI
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: ElevatedButton.icon(
+                                      icon: Icon(Icons.open_in_new,
+                                          color: Theme.of(context).colorScheme.onPrimary),
+                                      label: Text(
+                                        "Apri",
+                                        style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
-
-                              const SizedBox(height: 10),
-
-                              _btn(
-                                icon: Icons.fact_check,
-                                text: "Registro presenze",
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DocenteRegistroPresenzePage(
-                                        corsoId: doc.id,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.indigoAccent,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                          BorderRadius.circular(12),
+                                        ),
                                       ),
+                                      onPressed: () {
+                                        _showDashboardCorso(
+                                          context,
+                                          doc.id,
+                                          corso["nome"],
+                                          listaUid,
+                                          isCondiviso,
+                                          uid,
+                                          lezioniEffettuate,
+                                          lezioniTotali,
+                                        );
+                                      },
                                     ),
-                                  );
-                                },
-                              ),
+                                  ),
 
-                              const SizedBox(height: 10),
+                                  const SizedBox(height: 10),
 
-                              _btn(
-                                icon: Icons.school,
-                                text: "Docenti aggiunti",
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DocentiAggiuntiPage(
-                                        corsoId: doc.id,
-                                        nomeCorso: corso["nome"],
-                                        listaUid: listaUid,
+                                  if (isCondiviso)
+                                    ElevatedButton.icon(
+                                      icon: const Icon(Icons.remove_circle,
+                                          color: Colors.white),
+                                      label: const Text(
+                                        "Rimuovimi dal corso",
+                                        style:
+                                        TextStyle(color: Colors.white),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
-
-                              const SizedBox(height: 10),
-
-                              _btn(
-                                icon: Icons.person_add,
-                                text: "Aggiungi docente",
-                                onTap: () {
-                                  _showAggiungiDocentePopup(
-                                    context,
-                                    doc.id,
-                                    corso["docenteUid"],
-                                    listaUid,
-                                    corso["nome"],
-                                  );
-                                },
-                              ),
-
-                              const SizedBox(height: 10),
-
-                              if (!isCondiviso)
-                                _btnRed(
-                                  icon: Icons.delete,
-                                  text: "Elimina corso",
-                                  onTap: () {
-                                    // conferma eliminazione (rimane uguale)
-                                  },
-                                ),
-
-                              if (isCondiviso)
-                                _btn(
-                                  icon: Icons.remove_circle,
-                                  text: "Rimuovimi dal corso",
-                                  onTap: () async {
-                                    await FirebaseFirestore.instance
-                                        .collection("corsi")
-                                        .doc(doc.id)
-                                        .update({
-                                      "docentiCondivisi": FieldValue.arrayRemove([uid])
-                                    });
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text("Sei stato rimosso dal corso"),
+                                      style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.orangeAccent,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                          BorderRadius.circular(12),
+                                        ),
                                       ),
-                                    );
-                                  },
-                                ),
-                            ],
-                          ),
+                                      onPressed: () async {
+                                        await FirebaseFirestore.instance
+                                            .collection("corsi")
+                                            .doc(doc.id)
+                                            .update({
+                                          "docentiCondivisi":
+                                          FieldValue.arrayRemove([uid])
+                                        });
+
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                                "Sei stato rimosso dal corso"),
+                                            backgroundColor:
+                                            Colors.orangeAccent,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
                         );
                       },
                     );
-
-
                   },
                 );
               },
@@ -457,34 +613,30 @@ class TeacherCoursesPage extends StatelessWidget {
   }
 }
 
-Widget _btn({required IconData icon, required String text, required VoidCallback onTap}) {
+Widget _miniBtn({
+  required IconData icon,
+  required String text,
+  required VoidCallback onTap,
+}) {
   return SizedBox(
-    width: double.infinity,
-    child: ElevatedButton.icon(
-      icon: Icon(icon, color: Colors.white),
-      label: Text(text, style: const TextStyle(color: Colors.white)),
+    width: 140,
+    child: ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.indigoAccent,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
       onPressed: onTap,
-    ),
-  );
-}
-
-Widget _btnRed({required IconData icon, required String text, required VoidCallback onTap}) {
-  return SizedBox(
-    width: double.infinity,
-    child: ElevatedButton.icon(
-      icon: Icon(icon, color: Colors.white),
-      label: Text(text, style: const TextStyle(color: Colors.white)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.redAccent,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 26),
+          const SizedBox(height: 6),
+          Text(text, style: const TextStyle(color: Colors.white)),
+        ],
       ),
-      onPressed: onTap,
     ),
   );
 }

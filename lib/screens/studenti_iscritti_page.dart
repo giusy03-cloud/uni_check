@@ -16,11 +16,12 @@ class StudentiIscrittiPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
         title: Text("Iscritti - $nomeCorso"),
-        backgroundColor: Colors.indigoAccent,
+        backgroundColor: theme.colorScheme.background,
         centerTitle: true,
       ),
 

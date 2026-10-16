@@ -126,7 +126,7 @@ class DocenteRegistroPresenzePage extends StatelessWidget {
 
 
   // -------------------------------------------------------------
-  // ⭐ RESET REGISTRO
+  // ⭐ RESET REGISTRO (senza presenze_temp)
   // -------------------------------------------------------------
   void _showResetPopup(BuildContext context) {
     showDialog(
@@ -155,13 +155,7 @@ class DocenteRegistroPresenzePage extends StatelessWidget {
                   "studenti": [],
                   "lezioni": [],
                   "presenze": {},
-                  "presenze_temp": {}
                 });
-
-                await FirebaseFirestore.instance
-                    .collection("corsi")
-                    .doc(corsoId)
-                    .update({"studenti": []});
 
                 Navigator.pop(context);
 
@@ -180,118 +174,13 @@ class DocenteRegistroPresenzePage extends StatelessWidget {
   }
 
   // -------------------------------------------------------------
-  // ⭐ CONFERMA PRESENZE LEZIONE
-  // -------------------------------------------------------------
-  Future<void> _confermaSingolaLezione(
-      BuildContext context,
-      String lezioneId,
-      Map<String, Map<String, Map<String, dynamic>>> presenzeTemp,
-      ) async {
-    final registroRef =
-    FirebaseFirestore.instance.collection("registro_presenze").doc(corsoId);
-
-    final studentiTemp = presenzeTemp[lezioneId];
-    if (studentiTemp == null) return;
-
-    for (var entry in studentiTemp.entries) {
-      final uidStudente = entry.key;
-      final presente = entry.value["presente"] == 1;
-
-      await registroRef.update({
-        "presenze.$uidStudente.$lezioneId": presente ? 1 : 0,
-      });
-    }
-
-    await registroRef.update({
-      "presenze_temp.$lezioneId": FieldValue.delete(),
-    });
-
-    final doc = await registroRef.get();
-    final lezioni = List<Map<String, dynamic>>.from(doc["lezioni"]);
-
-    final nuoveLezioni = lezioni.map((lez) {
-      if (lez["lezioneId"] == lezioneId) {
-        return {...lez, "confermata": true};
-      }
-      return lez;
-    }).toList();
-
-    await registroRef.update({"lezioni": nuoveLezioni});
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Presenze confermate"),
-        backgroundColor: Colors.greenAccent,
-      ),
-    );
-  }
-
-  // -------------------------------------------------------------
-  // ⭐ MOSTRA PRESENZE LEZIONE
-  // -------------------------------------------------------------
-  void _mostraPresenzeLezione(
-      BuildContext context,
-      String lezioneId,
-      Map<String, Map<String, Map<String, dynamic>>> presenzeTemp,
-      List<Map<String, dynamic>> studenti,
-      Map<String, dynamic> presenzeUfficiali,
-      ) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
-          title: const Text("Presenze della lezione",
-              style: TextStyle(color: Colors.white)),
-          content: SizedBox(
-            width: 400,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: studenti.length,
-              itemBuilder: (context, index) {
-                final stud = studenti[index];
-                final uid = stud["uid"];
-                final nome = stud["nome"];
-                final cognome = stud["cognome"];
-
-                final presenzaUff = presenzeUfficiali[uid]?[lezioneId];
-                final presenzaTempStud =
-                presenzeTemp[lezioneId]?[uid]?["presente"];
-
-                final presenza = presenzaTempStud ?? presenzaUff ?? 0;
-
-                Icon icona = presenza == 1
-                    ? const Icon(Icons.check_circle, color: Colors.greenAccent)
-                    : const Icon(Icons.cancel, color: Colors.redAccent);
-
-                return ListTile(
-                  title: Text("$nome $cognome",
-                      style: const TextStyle(color: Colors.white)),
-                  trailing: icona,
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              child: const Text("Chiudi", style: TextStyle(color: Colors.white)),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // -------------------------------------------------------------
-  // ⭐ TABELLA MODERNA CON + / – / CONFERMA / VISUALIZZA
+  // ⭐ TABELLA MODERNA — SOLO PRESENZE UFFICIALI
   // -------------------------------------------------------------
   Widget _buildModernTable(
       BuildContext context,
       List<Map<String, dynamic>> studenti,
       List<Map<String, dynamic>> lezioni,
       Map<String, dynamic> presenze,
-      Map<String, Map<String, Map<String, dynamic>>> presenzeTemp,
       ) {
     return DataTable(
       headingRowColor: WidgetStateProperty.all(Colors.indigoAccent),
@@ -304,59 +193,19 @@ class DocenteRegistroPresenzePage extends StatelessWidget {
 
         ...lezioni.map(
               (lez) => DataColumn(
-            label: Row(
+            label: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("${lez["data"]}",
-                        style: const TextStyle(color: Colors.white)),
-                    Text(lez["tipo"],
-                        style:
-                        const TextStyle(color: Colors.white70, fontSize: 12)),
-                  ],
-                ),
-
-                const SizedBox(width: 6),
-
-                // ⭐ CONFERMA LEZIONE
-                IconButton(
-                  icon: Icon(
-                    Icons.check_circle,
-                    color: lez["confermata"] == true
-                        ? Colors.grey
-                        : Colors.greenAccent,
-                  ),
-                  onPressed: lez["confermata"] == true
-                      ? null
-                      : () async {
-                    await _confermaSingolaLezione(
-                        context, lez["lezioneId"], presenzeTemp);
-                  },
-                ),
-
-                // ⭐ VISUALIZZA PRESENZE
-                IconButton(
-                  icon: const Icon(Icons.remove_red_eye,
-                      color: Colors.lightBlueAccent),
-                  onPressed: () {
-                    _mostraPresenzeLezione(
-                      context,
-                      lez["lezioneId"],
-                      presenzeTemp,
-                      studenti,
-                      presenze,
-                    );
-                  },
-                ),
+                Text("${lez["data"]}", style: const TextStyle(color: Colors.white)),
+                Text(lez["tipo"],
+                    style: const TextStyle(color: Colors.white70, fontSize: 12)),
               ],
             ),
           ),
         ),
 
         const DataColumn(
-          label: Text("Percentuale",
-              style: TextStyle(color: Colors.white)),
+          label: Text("Percentuale", style: TextStyle(color: Colors.white)),
         ),
       ],
 
@@ -387,9 +236,7 @@ class DocenteRegistroPresenzePage extends StatelessWidget {
 
             ...lezioni.map((lez) {
               final lezId = lez["lezioneId"];
-              final valoreTemp = presenzeTemp[lezId]?[uid]?["presente"];
-              final valore = valoreTemp ?? (presenze[uid]?[lezId] ?? 0);
-              final confermata = lez["confermata"] == true;
+              final valore = presenze[uid]?[lezId] ?? 0;
 
               return DataCell(
                 Row(
@@ -397,8 +244,7 @@ class DocenteRegistroPresenzePage extends StatelessWidget {
                     Text(
                       valore.toString(),
                       style: TextStyle(
-                        color:
-                        valore == 1 ? Colors.greenAccent : Colors.redAccent,
+                        color: valore == 1 ? Colors.greenAccent : Colors.redAccent,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -407,32 +253,26 @@ class DocenteRegistroPresenzePage extends StatelessWidget {
 
                     // ⭐ + AGGIUNGI PRESENZA
                     IconButton(
-                      icon: const Icon(Icons.add_circle,
-                          color: Colors.greenAccent),
-                      onPressed: confermata
-                          ? null
-                          : () async {
+                      icon: const Icon(Icons.add_circle, color: Colors.greenAccent),
+                      onPressed: () async {
                         await FirebaseFirestore.instance
                             .collection("registro_presenze")
                             .doc(corsoId)
                             .update({
-                          "presenze_temp.$lezId.$uid.presente": 1,
+                          "presenze.$uid.$lezId": 1,
                         });
                       },
                     ),
 
                     // ⭐ - RIMUOVI PRESENZA
                     IconButton(
-                      icon: const Icon(Icons.remove_circle,
-                          color: Colors.redAccent),
-                      onPressed: confermata
-                          ? null
-                          : () async {
+                      icon: const Icon(Icons.remove_circle, color: Colors.redAccent),
+                      onPressed: () async {
                         await FirebaseFirestore.instance
                             .collection("registro_presenze")
                             .doc(corsoId)
                             .update({
-                          "presenze_temp.$lezId.$uid.presente": 0,
+                          "presenze.$uid.$lezId": 0,
                         });
                       },
                     ),
@@ -462,127 +302,129 @@ class DocenteRegistroPresenzePage extends StatelessWidget {
         centerTitle: true,
       ),
 
-      body: Stack(
-        children: [
-          StreamBuilder(
-            stream: FirebaseFirestore.instance
-                .collection("registro_presenze")
-                .doc(corsoId)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
-                );
-              }
+      body: StreamBuilder(
+        stream: FirebaseFirestore.instance
+            .collection("registro_presenze")
+            .doc(corsoId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            );
+          }
 
-              final data = snapshot.data!.data();
-              if (data == null) {
-                return const Center(
-                  child: Text("Nessun registro trovato",
-                      style: TextStyle(color: Colors.white)),
-                );
-              }
+          final data = snapshot.data!.data();
+          if (data == null) {
+            return const Center(
+              child: Text("Nessun registro trovato",
+                  style: TextStyle(color: Colors.white)),
+            );
+          }
 
-              final studenti = List<Map<String, dynamic>>.from(data["studenti"]);
-              final lezioni = List<Map<String, dynamic>>.from(data["lezioni"]);
-              final presenze = Map<String, dynamic>.from(data["presenze"]);
-              final presenzeTempRaw = data["presenze_temp"] ?? {};
+          final studenti = List<Map<String, dynamic>>.from(data["studenti"]);
+          final lezioni = List<Map<String, dynamic>>.from(data["lezioni"]);
+          final presenze = Map<String, dynamic>.from(data["presenze"]);
 
-              final Map<String, Map<String, Map<String, dynamic>>> presenzeTemp =
-              {};
+          if (studenti.isEmpty) {
+            return const Center(
+              child: Text(
+                "Nessuno studente iscritto.",
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            );
+          }
 
-              presenzeTempRaw.forEach((lezioneId, studentiMap) {
-                final studentiCorretti = <String, Map<String, dynamic>>{};
-                (studentiMap as Map).forEach((uidStudente, datiStudente) {
-                  studentiCorretti[uidStudente.toString()] =
-                  Map<String, dynamic>.from(datiStudente as Map);
-                });
-                presenzeTemp[lezioneId.toString()] = studentiCorretti;
-              });
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
 
-              if (studenti.isEmpty) {
-                return const Center(
-                  child: Text(
-                    "Nessuno studente iscritto.",
-                    style: TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-                );
-              }
-
-              return Column(
+              // ⭐ Pulsanti sopra la tabella
+              Row(
                 children: [
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final screenWidth = constraints.maxWidth;
+                  SizedBox(
+                    width: 160,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.download, color: Colors.white),
+                      label: const Text("Scarica",
+                          style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigoAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () async {
+                        final snap = await FirebaseFirestore.instance
+                            .collection("registro_presenze")
+                            .doc(corsoId)
+                            .get();
 
-                        // ⭐ Larghezza minima della tabella (double!)
-                        final minTableWidth = 300.0 + (lezioni.length * 180.0);
+                        final studenti =
+                        List<Map<String, dynamic>>.from(snap["studenti"]);
+                        final lezioni =
+                        List<Map<String, dynamic>>.from(snap["lezioni"]);
+                        final presenze =
+                        Map<String, dynamic>.from(snap["presenze"]);
 
-                        return SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minWidth: minTableWidth < screenWidth ? screenWidth : minTableWidth,
-                            ),
-                            child: _buildModernTable(
-                              context,
-                              studenti,
-                              lezioni,
-                              presenze,
-                              presenzeTemp,
-                            ),
-                          ),
-                        );
+                        esportaRegistroExcel(context, studenti, lezioni, presenze);
                       },
                     ),
                   ),
 
+                  const SizedBox(width: 12),
 
+                  SizedBox(
+                    width: 160,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.delete_forever, color: Colors.white),
+                      label: const Text("Reset",
+                          style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => _showResetPopup(context),
+                    ),
+                  ),
                 ],
-              );
-            },
-          ),
+              ),
 
-          // ⭐ FLOATING BUTTONS
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: Column(
-              children: [
-                FloatingActionButton.extended(
-                  backgroundColor: Colors.indigoAccent,
-                  icon: const Icon(Icons.download, color: Colors.white),
-                  label: const Text("Scarica", style: TextStyle(color: Colors.white)),
-                  onPressed: () async {
-                    final snap = await FirebaseFirestore.instance
-                        .collection("registro_presenze")
-                        .doc(corsoId)
-                        .get();
+              const SizedBox(height: 20),
 
-                    final studenti =
-                    List<Map<String, dynamic>>.from(snap["studenti"]);
-                    final lezioni =
-                    List<Map<String, dynamic>>.from(snap["lezioni"]);
-                    final presenze =
-                    Map<String, dynamic>.from(snap["presenze"]);
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final screenWidth = constraints.maxWidth;
+                    final minTableWidth = 300.0 + (lezioni.length * 180.0);
 
-                    esportaRegistroExcel(context, studenti, lezioni, presenze);
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minWidth: minTableWidth < screenWidth
+                              ? screenWidth
+                              : minTableWidth,
+                        ),
+                        child: _buildModernTable(
+                          context,
+                          studenti,
+                          lezioni,
+                          presenze,
+                        ),
+                      ),
+                    );
                   },
                 ),
-                const SizedBox(height: 12),
-                FloatingActionButton.extended(
-                  backgroundColor: Colors.redAccent,
-                  icon: const Icon(Icons.delete_forever, color: Colors.white),
-                  label: const Text("Reset", style: TextStyle(color: Colors.white)),
-                  onPressed: () => _showResetPopup(context),
-                ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }

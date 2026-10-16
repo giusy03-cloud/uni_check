@@ -64,7 +64,23 @@ class StudentPresenzeCorsoPage extends StatelessWidget {
                 );
               }
 
-              final lezioni = snapshotLezioni.data!.docs;
+              final now = DateTime.now();
+
+              final lezioni = snapshotLezioni.data!.docs.where((doc) {
+                final l = doc.data() as Map<String, dynamic>;
+                final codice = l["codice"];
+                final scadenzaTS = l["codiceScadenza"];
+
+                // ⭐ Lezione non avviata → non mostrare
+                if (codice == null || scadenzaTS == null) return false;
+
+                final scadenza = (scadenzaTS as Timestamp).toDate();
+
+                // ⭐ Lezione avviata o conclusa → mostrare
+                return true;
+              }).toList();
+
+
 
               return ListView.builder(
                 padding: const EdgeInsets.all(16),

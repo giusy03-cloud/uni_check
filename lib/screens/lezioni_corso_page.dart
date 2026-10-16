@@ -46,11 +46,12 @@ class _LezioniCorsoPageState extends State<LezioniCorsoPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
+        backgroundColor: theme.colorScheme.background,
         title: Text("Lezioni - ${widget.nomeCorso}"),
-        backgroundColor: Colors.indigoAccent,
         centerTitle: true,
       ),
 
@@ -194,6 +195,22 @@ class _LezioniCorsoPageState extends State<LezioniCorsoPage> {
                                 DateTime.now().add(const Duration(minutes: 2)),
                               ),
                             });
+
+// ⭐ AGGIUNGI LA LEZIONE AL REGISTRO SOLO ORA
+                            await FirebaseFirestore.instance
+                                .collection("registro_presenze")
+                                .doc(widget.corsoId)
+                                .set({
+                              "lezioni": FieldValue.arrayUnion([
+                                {
+                                  "lezioneId": lezioneId,
+                                  "data": "${data.day}/${data.month}/${data.year}",
+                                  "tipo": tipo,
+                                }
+                              ])
+                            }, SetOptions(merge: true));
+                            if (!context.mounted) return;
+
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text("Codice generato: $nuovoCodice")),

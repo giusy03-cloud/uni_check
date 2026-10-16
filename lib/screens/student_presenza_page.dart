@@ -218,17 +218,19 @@ class _StudentPresenzaPageState extends State<StudentPresenzaPage> {
       errore("Codice non generato dal docente");
     } else if (codiceScaduto) {
       errore("Codice scaduto");
+
       await FirebaseFirestore.instance
           .collection("registro_presenze")
           .doc(lezione["corsoId"])
           .update({
         "presenze.${uidStudente}.${widget.lezioneId}": 0,
       });
+
     } else if (codiceInserito != codice) {
       errore("Codice errato");
+
     } else {
-      // ⭐ CREA PRESENZA
-      // ⭐ Recupera dati studente
+      // ⭐ CREA PRESENZA (storico)
       final studDoc = await FirebaseFirestore.instance
           .collection("utenti")
           .doc(uidStudente)
@@ -236,41 +238,23 @@ class _StudentPresenzaPageState extends State<StudentPresenzaPage> {
 
       final studData = studDoc.data()!;
 
-// ⭐ Salva presenza nella collezione presenze (storico)
       await FirebaseFirestore.instance.collection("presenze").add({
         "lezioneId": widget.lezioneId,
         "studenteId": uidStudente,
         "corsoId": lezione["corsoId"],
         "timestamp": FieldValue.serverTimestamp(),
-
-        // ⭐ Aggiunta richiesta dal prof
         "nome": studData["nome"],
         "cognome": studData["cognome"],
         "email": studData["email"],
       });
 
+      // ⭐ Scrive direttamente nel registro presenze (ufficiale)
       await FirebaseFirestore.instance
           .collection("registro_presenze")
           .doc(lezione["corsoId"])
           .update({
         "presenze.${uidStudente}.${widget.lezioneId}": 1,
       });
-
-      await FirebaseFirestore.instance
-          .collection("registro_presenze")
-          .doc(lezione["corsoId"])
-          .update({
-        "presenze_temp.${widget.lezioneId}.${uidStudente}": {
-          "uid": uidStudente,
-          "nome": studData["nome"],
-          "cognome": studData["cognome"],
-          "email": studData["email"],
-          "presente": 1,
-          "timestamp": FieldValue.serverTimestamp(),
-        }
-      });
-
-
 
       ok("Presenza registrata!");
 
@@ -280,6 +264,8 @@ class _StudentPresenzaPageState extends State<StudentPresenzaPage> {
 
     setState(() => isLoading = false);
   }
+
+
 
   void errore(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
